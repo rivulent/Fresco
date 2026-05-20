@@ -1,7 +1,16 @@
 import type { Stage } from '@codaco/shared-consts';
 import { createSelector } from '@reduxjs/toolkit';
+import type { PipedData } from '~/schemas/interviews';
 import { getProtocolStages } from './protocol';
 import { getActiveSession, getStageIndex } from './shared';
+
+// Piped data for text substitution in prompts/information screens
+export const getPipedData = createSelector(
+  getActiveSession,
+  (session): PipedData | undefined => {
+    return session?.pipedData;
+  },
+);
 
 // Stage stage is temporary storage for stages used by TieStrengthCensus and DyadCensus
 export const getStageMetadata = createSelector(

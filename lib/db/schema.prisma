@@ -76,6 +76,7 @@ model Interview {
   protocolId    String      @map("protocolId")
   currentStep   Int         @default(0)
   stageMetadata Json? // Used to store negative responses in tiestrength census and dyadcensus
+  pipedData     Json? // Pre-populated data for text substitution in prompts/information screens
 
   @@index(fields: [protocolId])
   @@index([participantId])

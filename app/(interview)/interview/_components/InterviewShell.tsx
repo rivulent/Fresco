@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { parseAsInteger, useQueryState } from 'nuqs';
 import type { SyncInterviewType } from '~/actions/interviews';
 import type { getInterviewById } from '~/queries/interviews';
+import type { PipedData } from '~/schemas/interviews';
 
 // The job of interview shell is to receive the server-side session and protocol
 // and create a redux store with that data.
@@ -32,7 +33,7 @@ const InterviewShell = ({
       return;
     }
 
-    const { protocol, ...serverSession } = interview;
+    const { protocol, pipedData, ...serverSession } = interview;
 
     // If we have a current stage in the URL bar, and it is different from the
     // server session, set the server session to the current stage.
@@ -50,7 +51,11 @@ const InterviewShell = ({
       type: SET_SERVER_SESSION,
       payload: {
         protocol,
-        session: serverSession,
+        session: {
+          ...serverSession,
+          // Convert null to undefined and cast to PipedData for pipedData
+          pipedData: (pipedData ?? undefined) as PipedData | undefined,
+        },
       },
     });
 

@@ -11,6 +11,9 @@ export type CreateInterview = {
   protocolId: Protocol['id'];
 };
 
+// Piped-in data for text substitution in prompts/information screens
+export type PipedData = Record<string, string | number | boolean | null>;
+
 const NumberStringBoolean = z.union([z.number(), z.string(), z.boolean()]);
 type NumberStringBoolean = z.infer<typeof NumberStringBoolean>;
 

@@ -1,0 +1,1130 @@
+{
+  "stages": [
+    {
+      "label": "-1 - Pre-Interview Questions",
+      "type": "EgoForm",
+      "form": {
+        "fields": [
+          {
+            "variable": "0cc42993-40df-4117-bb51-c73f1f503375",
+            "prompt": "Select the time point for this interview.\n"
+          },
+          {
+            "variable": "bd6ab7a2-671e-4d76-824d-af5367f24e46",
+            "prompt": "Does this interview include SA?\n"
+          },
+          {
+            "variable": "2c3aef85-70ff-405b-82f8-7f4e1ba8ba57",
+            "prompt": "Enter the participant ID number:\n"
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": "Almost ready to start!",
+        "text": "Before we begin, the interviewer needs to answer the following questions.\n"
+      },
+      "interviewScript": "",
+      "id": "82390b00-da99-11eb-9f86-536d6dd8933f"
+    },
+    {
+      "label": "0 - Introduction",
+      "type": "Information",
+      "title": " ",
+      "items": [
+        {
+          "size": "LARGE",
+          "id": "68dafaa3-4e52-4874-b8fa-8df07d292f82",
+          "content": "dd0ab56a-3f67-48d1-9d4d-61583919455b",
+          "type": "asset"
+        }
+      ],
+      "id": "88a8a7a0-a41b-11ed-9601-3197931e5581"
+    },
+    {
+      "label": "1a - Identify Your Important People from the Initial Interview",
+      "type": "NameGeneratorQuickAdd",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "panels": [
+        {
+          "id": "5a4f57d2-4e68-43da-a275-570de3133b84",
+          "title": "Important people from your initial interview:",
+          "dataSource": "existing"
+        }
+      ],
+      "quickAdd": "5df16102-5fba-4f7a-9bef-31479abbf04e",
+      "prompts": [
+        {
+          "id": "37c315c6-a5cf-41d8-86a5-7addfd2e1565",
+          "text": "Please add the people from your initial interview who have been important to you ***in the past year***.\n",
+          "additionalAttributes": [
+            {
+              "variable": "3c85d60a-1c74-4cf2-b4d8-9d060950ccfb",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "id": "e393f830-a3ef-11ed-bebf-c73b718a35ed"
+    },
+    {
+      "label": "1b - Identify Your Important People",
+      "type": "NameGeneratorQuickAdd",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "quickAdd": "5df16102-5fba-4f7a-9bef-31479abbf04e",
+      "prompts": [
+        {
+          "id": "b14cf676-3e49-473d-a4b3-46ad9d5babd4",
+          "text": "Please add the **FIRST NAME** of any additional people who have been important to you at any time ***in the past year***. You can list as many people as you'd like.\n",
+          "additionalAttributes": [
+            {
+              "variable": "75ba95a2-0f85-4f75-b803-7d70874b6790",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "id": "773b15d0-9d0d-11ed-bd94-1d07d57f91a9",
+      "panels": [
+        {
+          "id": "9ca8b42f-336e-4b55-8497-2bfdea47197d",
+          "dataSource": "existing",
+          "title": "People you have already included:",
+          "filter": {
+            "rules": [
+              {
+                "type": "alter",
+                "options": {
+                  "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+                  "operator": "EXACTLY",
+                  "attribute": "3c85d60a-1c74-4cf2-b4d8-9d060950ccfb",
+                  "value": true
+                },
+                "id": "0f4d34c5-7756-4d47-b55d-c6e332d3649f"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "label": "4 - Network Composition (current)",
+      "type": "Sociogram",
+      "background": {
+        "image": "d01c3785-ccfc-4af6-9180-3b40a4ad6483"
+      },
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "prompts": [
+        {
+          "id": "1fac816a-de05-4634-949e-7e8937a70456",
+          "text": "Position the people you have named on the screen. Put people who you are **currently closer to** toward the center of the circles.\n",
+          "layout": {
+            "layoutVariable": "5eb691df-e296-4251-bd78-6e6376d0c395"
+          }
+        },
+        {
+          "id": "077084f0-efb0-45e5-bdf5-40d08bb055f8",
+          "text": "Select the people **you would go to** for help currently.\n",
+          "layout": {
+            "layoutVariable": "5eb691df-e296-4251-bd78-6e6376d0c395"
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "2ec943a3-e84f-471a-a5c3-d5a95507369f"
+          }
+        },
+        {
+          "id": "9e0147d3-5e5d-4757-b070-e11c37c82f27",
+          "text": "Select the people who would **come to you** for help currently.\n",
+          "layout": {
+            "layoutVariable": "5eb691df-e296-4251-bd78-6e6376d0c395"
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "24927503-9d2f-4d78-8413-6abe3e5d7aa9"
+          }
+        },
+        {
+          "id": "3fc25c68-7996-49be-be81-6dc90ae41f57",
+          "edges": {
+            "display": [
+              "e5b82444-8f1b-4673-b09f-b320bdada8dc"
+            ],
+            "create": "e5b82444-8f1b-4673-b09f-b320bdada8dc"
+          },
+          "text": "Who currently spends time together _without_ you being there?\n",
+          "layout": {
+            "layoutVariable": "5eb691df-e296-4251-bd78-6e6376d0c395"
+          },
+          "highlight": {
+            "allowHighlighting": false
+          }
+        },
+        {
+          "id": "1cf67d14-eb51-4106-9a74-ed46d2226bf1",
+          "edges": {
+            "display": [
+              "4768f07c-11e9-4269-9be5-e5671869dee4"
+            ],
+            "create": "4768f07c-11e9-4269-9be5-e5671869dee4"
+          },
+          "text": "Who currently **has** conflict with each other?\n",
+          "layout": {
+            "layoutVariable": "5eb691df-e296-4251-bd78-6e6376d0c395"
+          },
+          "highlight": {
+            "allowHighlighting": false
+          }
+        },
+        {
+          "id": "1432d023-a83f-4ae0-a04f-e81cfb5853e4",
+          "text": "Who do YOU currently have conflict with?\n",
+          "layout": {
+            "layoutVariable": "5eb691df-e296-4251-bd78-6e6376d0c395"
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "ad57bd20-b174-4c83-afcc-55a3184e4f17"
+          }
+        }
+      ],
+      "id": "908bd030-9e69-11ed-baa4-c30170544f51",
+      "filter": {
+        "join": "OR",
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "3c85d60a-1c74-4cf2-b4d8-9d060950ccfb",
+              "value": true
+            },
+            "id": "0ed91eb0-73e9-4ef6-9614-b83376900886"
+          },
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "75ba95a2-0f85-4f75-b803-7d70874b6790",
+              "value": true
+            },
+            "id": "3b90b619-04c5-44fa-aa84-469e16ab0dc2"
+          }
+        ]
+      }
+    },
+    {
+      "label": "4b - Contact (current)",
+      "type": "CategoricalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "prompts": [
+        {
+          "variable": "5163e4bf-0498-42c2-b36d-31ada1c07de8",
+          "id": "7049911a-8b72-4b7b-af74-ff8ed477f32e",
+          "text": "Currently, how frequently are you in contact with this person?\n"
+        },
+        {
+          "variable": "cc19b817-5aa0-420a-bce4-540a503d54a3",
+          "id": "47cb0c2a-2063-4e65-bc1b-f8d6756c77e0",
+          "text": "Which category best describes this person's drinking pattern?\n"
+        },
+        {
+          "variable": "4108c171-9f6f-4978-88df-51f9cd3e21d7",
+          "id": "615d2ce3-e4a2-4aa5-ac16-1415e48d01d1",
+          "text": "Has this person ever suggested you have a drink to **deal with stress**?\n"
+        }
+      ],
+      "id": "073ca700-9e6e-11ed-baa4-c30170544f51",
+      "filter": {
+        "join": "OR",
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "3c85d60a-1c74-4cf2-b4d8-9d060950ccfb",
+              "value": true
+            },
+            "id": "095cb7e9-3458-491d-a50c-92db6588c648"
+          },
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "75ba95a2-0f85-4f75-b803-7d70874b6790",
+              "value": true
+            },
+            "id": "d290885f-65fa-4d0b-bb69-3bf6fedff018"
+          }
+        ]
+      }
+    },
+    {
+      "label": "4 - Important People Characteristics",
+      "type": "AlterForm",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "introductionPanel": {
+        "title": "We are interested in learning more about the people who are important to you.",
+        "text": "The following questions will ask you more about each of the people you named.\n"
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "b42bd8c8-d8b9-4dc4-847a-f348ee0f0179",
+            "prompt": "What is this person's age?\n"
+          },
+          {
+            "variable": "1b539ba4-359b-4e6f-9cd7-3dd916890ebb",
+            "prompt": "What is this person's gender?\n"
+          },
+          {
+            "variable": "8ad177b5-7543-4ba6-a889-7648ff9977d8",
+            "prompt": "Is this person transgender?\n"
+          },
+          {
+            "variable": "22b8f92b-daaf-42cb-9777-e54ec0ed601f",
+            "prompt": "What is this person's sexual identity?\n"
+          },
+          {
+            "variable": "4c1543ab-2722-43e2-a8a5-1c486a67f0ee",
+            "prompt": "How would you best describe your relationship with this person?\n"
+          },
+          {
+            "variable": "018a0fb2-eac7-4f7d-b42a-df97aa337562",
+            "prompt": "How long have you known this person?\n"
+          },
+          {
+            "variable": "d34ca541-86a5-457f-98a8-c1ab04e9f1c9",
+            "prompt": "When was the last time you talked to this person?\n"
+          }
+        ]
+      },
+      "id": "3d64fb60-9e6f-11ed-baa4-c30170544f51",
+      "filter": {
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "75ba95a2-0f85-4f75-b803-7d70874b6790",
+              "value": true
+            },
+            "id": "97154d53-8328-49c9-a82c-ac583012cdc6"
+          }
+        ]
+      }
+    },
+    {
+      "label": "6 - Disclosure (any)",
+      "type": "EgoForm",
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "rules": [
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "bd6ab7a2-671e-4d76-824d-af5367f24e46",
+                "value": true
+              },
+              "id": "6dd715f4-c405-4760-8581-909dc363e1a0"
+            }
+          ]
+        }
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "98c2fdd2-1645-4498-a948-6672374fba4a",
+            "prompt": "Have you ever talked to any of the people you listed about the incident?\n"
+          },
+          {
+            "variable": "dbdbb4ff-0791-47f7-a4ee-6b718a9865b7",
+            "prompt": "Have any of the people you listed found out about the incident from someone else?\n"
+          },
+          {
+            "variable": "07b9eb1a-c904-4768-a5ff-078da3d844bd",
+            "prompt": "Have you talked to any of the people you listed about the incident for the FIRST time in the **past year?**\n"
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": " ",
+        "text": "If you have talked to any of the people you listed about the incident, these next questions will ask about what those conversations were like.\n"
+      },
+      "id": "1d7fd090-9e88-11ed-8ec6-bf6e5d15c6b3"
+    },
+    {
+      "label": "6a - Disclosure (who)",
+      "type": "CategoricalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "join": "AND",
+          "rules": [
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "bd6ab7a2-671e-4d76-824d-af5367f24e46",
+                "value": true
+              },
+              "id": "bc5e832e-5aae-44e9-8544-602f8737e0b8"
+            },
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "98c2fdd2-1645-4498-a948-6672374fba4a",
+                "value": true
+              },
+              "id": "7a95e747-a47a-4597-a330-4cf34e15bfa6"
+            }
+          ]
+        }
+      },
+      "prompts": [
+        {
+          "variable": "7c5b6c0d-322f-4a00-904c-40ca81b5b85c",
+          "id": "844d9a24-61fd-40db-9789-d796c82ae689",
+          "text": "In the **past year**, have you talked to this person about the incident?\n"
+        }
+      ],
+      "id": "2417ef90-9e89-11ed-8ec6-bf6e5d15c6b3",
+      "filter": {
+        "join": "OR",
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "3c85d60a-1c74-4cf2-b4d8-9d060950ccfb",
+              "value": true
+            },
+            "id": "6f0e9e1d-bb33-4657-ba59-b99b7ccc6723"
+          },
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "75ba95a2-0f85-4f75-b803-7d70874b6790",
+              "value": true
+            },
+            "id": "4c59118b-221b-4f80-9c1b-ac72f4a5f040"
+          }
+        ]
+      }
+    },
+    {
+      "label": "6b - Disclosure (how)",
+      "type": "CategoricalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "join": "AND",
+          "rules": [
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "bd6ab7a2-671e-4d76-824d-af5367f24e46",
+                "value": true
+              },
+              "id": "8d85f4c1-f6d6-4f61-be88-d2aae00c858f"
+            },
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "dbdbb4ff-0791-47f7-a4ee-6b718a9865b7",
+                "value": true
+              },
+              "id": "56edd373-d0eb-4f16-baf7-ea70a2bda5c3"
+            }
+          ]
+        }
+      },
+      "prompts": [
+        {
+          "variable": "d3f6eba2-46ea-4588-b80d-acd3ac01e284",
+          "id": "2122d56c-3fcb-44fe-bdf8-41d3ed5579f3",
+          "text": "Who found out about the incident from someone else (not you)?\n"
+        }
+      ],
+      "id": "7f65ce80-9e89-11ed-8ec6-bf6e5d15c6b3",
+      "filter": {
+        "join": "OR",
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "3c85d60a-1c74-4cf2-b4d8-9d060950ccfb",
+              "value": true
+            },
+            "id": "234817f5-b8c9-40b0-bf59-1d897bc34f09"
+          },
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "75ba95a2-0f85-4f75-b803-7d70874b6790",
+              "value": true
+            },
+            "id": "ddb0caaf-7c4a-4c3f-b4f7-d48a85d4945b"
+          }
+        ]
+      }
+    },
+    {
+      "label": "6c - Disclosure (future)",
+      "type": "OrdinalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "rules": [
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "bd6ab7a2-671e-4d76-824d-af5367f24e46",
+                "value": true
+              },
+              "id": "aca3147c-8c3e-4110-ac7d-fc5d39a76985"
+            }
+          ]
+        }
+      },
+      "prompts": [
+        {
+          "variable": "968b213e-dbc9-47a7-9843-6fa4f077cce2",
+          "color": "ord-color-seq-7",
+          "id": "dcd1ec9f-e4b7-412a-a255-48e344569371",
+          "text": "Do you anticipate talking to this person about the incident in the future?\n"
+        }
+      ],
+      "id": "db2c11c0-9e89-11ed-8ec6-bf6e5d15c6b3",
+      "filter": {
+        "join": "OR",
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "3c85d60a-1c74-4cf2-b4d8-9d060950ccfb",
+              "value": true
+            },
+            "id": "4a5a8bbf-fc38-4b0b-8170-554e125344d9"
+          },
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "75ba95a2-0f85-4f75-b803-7d70874b6790",
+              "value": true
+            },
+            "id": "dd23962f-92d8-4fcd-9f67-5f7ca293588f"
+          }
+        ]
+      }
+    },
+    {
+      "label": "6d - Support (first talk)",
+      "type": "OrdinalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "rules": [
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "07b9eb1a-c904-4768-a5ff-078da3d844bd",
+                "value": true
+              },
+              "id": "4f298942-5329-4aa6-bd8b-009a032bcd17"
+            }
+          ]
+        }
+      },
+      "filter": {
+        "join": "OR",
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "INCLUDES",
+              "attribute": "7c5b6c0d-322f-4a00-904c-40ca81b5b85c",
+              "value": 1
+            },
+            "id": "64b054ca-8c84-4e3b-b055-16ec9f24094b"
+          },
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "INCLUDES",
+              "attribute": "7c5b6c0d-322f-4a00-904c-40ca81b5b85c",
+              "value": 2
+            },
+            "id": "3df56ba8-766a-4c07-a1ec-704604126c08"
+          }
+        ]
+      },
+      "prompts": [
+        {
+          "variable": "dff90bb0-0373-49f7-97a6-f0df09900c0d",
+          "color": "ord-color-seq-1",
+          "id": "d17891dd-fdd2-4930-a966-5238700e417c",
+          "text": "How supportive was this person when you **FIRST** told them about the incident?\n"
+        }
+      ],
+      "id": "9efede80-daae-11eb-8fc9-1b84137da2c9",
+      "interviewScript": ""
+    },
+    {
+      "label": "6e - Support (last talk)",
+      "type": "OrdinalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "filter": {
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "INCLUDES",
+              "attribute": "7c5b6c0d-322f-4a00-904c-40ca81b5b85c",
+              "value": 2
+            },
+            "id": "1c32fcd7-c337-4dd3-a866-9dcf9a49cb3c"
+          }
+        ]
+      },
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "join": "AND",
+          "rules": [
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "bd6ab7a2-671e-4d76-824d-af5367f24e46",
+                "value": true
+              },
+              "id": "50a8ad7d-9b04-4fbf-b395-ecb979a20b44"
+            },
+            {
+              "type": "alter",
+              "options": {
+                "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+                "operator": "INCLUDES",
+                "attribute": "7c5b6c0d-322f-4a00-904c-40ca81b5b85c",
+                "value": 2
+              },
+              "id": "2ae12afc-5579-48db-9d94-4e997ee3d777"
+            }
+          ]
+        }
+      },
+      "prompts": [
+        {
+          "variable": "906bdb4c-111c-4841-bed5-a144133c3f6a",
+          "color": "ord-color-seq-2",
+          "id": "72356a35-6401-4160-85d2-fee3185a1dfc",
+          "text": "How supportive was this person the LAST TIME you talked to them about the incident?\n"
+        }
+      ],
+      "id": "fdbbd540-9e93-11ed-8ec6-bf6e5d15c6b3"
+    },
+    {
+      "label": "6f - Support (future)",
+      "type": "OrdinalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "rules": [
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "bd6ab7a2-671e-4d76-824d-af5367f24e46",
+                "value": true
+              },
+              "id": "fff07bd4-f87d-4ff9-8335-e5d87c11e66a"
+            }
+          ]
+        }
+      },
+      "prompts": [
+        {
+          "variable": "ad820317-2650-41a2-ae1c-d856a7a79100",
+          "color": "ord-color-seq-7",
+          "id": "e19be2dd-2820-4b31-b31c-ebc4e507199b",
+          "text": "How supportive do you expect each person would be if you talked to them about the incident in the **FUTURE**?\n"
+        }
+      ],
+      "id": "58c690b0-9e94-11ed-8ec6-bf6e5d15c6b3",
+      "filter": {
+        "join": "OR",
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "3c85d60a-1c74-4cf2-b4d8-9d060950ccfb",
+              "value": true
+            },
+            "id": "cef7bac3-754a-464f-9155-ac9c0fbf2eba"
+          },
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "75ba95a2-0f85-4f75-b803-7d70874b6790",
+              "value": true
+            },
+            "id": "b3831441-2e3c-4f81-a577-9f913cdb9f94"
+          }
+        ]
+      }
+    },
+    {
+      "label": "7 - Social Reactions",
+      "type": "OrdinalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "join": "OR",
+          "rules": [
+            {
+              "type": "alter",
+              "options": {
+                "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+                "operator": "INCLUDES",
+                "attribute": "7c5b6c0d-322f-4a00-904c-40ca81b5b85c",
+                "value": 1
+              },
+              "id": "543b4f54-dbc3-47ca-b2bd-9b2e9f69ea04"
+            },
+            {
+              "type": "alter",
+              "options": {
+                "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+                "operator": "INCLUDES",
+                "attribute": "7c5b6c0d-322f-4a00-904c-40ca81b5b85c",
+                "value": 2
+              },
+              "id": "0cb887f0-978a-4a25-b4d2-c8c04f6e71a6"
+            }
+          ]
+        }
+      },
+      "filter": {
+        "join": "OR",
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "INCLUDES",
+              "attribute": "7c5b6c0d-322f-4a00-904c-40ca81b5b85c",
+              "value": 1
+            },
+            "id": "9c88b48f-88f4-4821-bc73-25266b5a07d7"
+          },
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "INCLUDES",
+              "attribute": "7c5b6c0d-322f-4a00-904c-40ca81b5b85c",
+              "value": 2
+            },
+            "id": "69bd5d9a-e428-4814-a4f9-6c60772dd910"
+          }
+        ]
+      },
+      "prompts": [
+        {
+          "variable": "1976a50a-c397-4715-b022-57771a6a7e4b",
+          "color": "ord-color-seq-4",
+          "id": "f4660cba-e705-441e-99d0-142e7d8b512b",
+          "text": "To what extent did each person reassure you that you are a good person?\n"
+        },
+        {
+          "variable": "5b43d0bf-7d8a-4d1f-b798-629202201434",
+          "color": "ord-color-seq-4",
+          "id": "4d0b737f-ac01-4c60-8afc-23ff0708be13",
+          "text": "To what extent did each person treat you differently in some way than before you told them that made you uncomfortable?\n"
+        },
+        {
+          "variable": "9c271b44-3aa0-492e-9021-74b15ac8e6eb",
+          "color": "ord-color-seq-4",
+          "id": "358a964a-f25b-498d-a573-685d164cf3e7",
+          "text": "To what extent did each person become so upset that they needed reassurance from you?\n"
+        },
+        {
+          "variable": "f14f4162-ef4f-4878-a19f-1cf67d50877a",
+          "color": "ord-color-seq-4",
+          "id": "93cdaba1-190f-4467-b861-d61c0eddcab6",
+          "text": "To what extent did each person make decisions or do things for you?\n"
+        },
+        {
+          "variable": "59db89d5-4ef2-4b5a-b7ff-818b8efae894",
+          "color": "ord-color-seq-4",
+          "id": "1cc5ffbb-4217-485b-818e-28359f082f87",
+          "text": "To what extent did each person tell you that you could have done more to prevent the incident from occurring?\n"
+        },
+        {
+          "variable": "afc2543a-bf2a-4280-8185-544d5e13b78d",
+          "color": "ord-color-seq-4",
+          "id": "f1763a9a-b48a-44df-95dd-e60f5489d344",
+          "text": "To what extent did each person provide information and discuss options?\n"
+        },
+        {
+          "variable": "8b41bcc2-4ab2-42e4-a3bd-ade50fbb229d",
+          "color": "ord-color-seq-4",
+          "id": "f943f5a2-edef-41be-bb2d-b05bd963d519",
+          "text": "To what extent did each person tell you to stop thinking about the incident?\n"
+        },
+        {
+          "variable": "78504f45-ec0a-40e9-b911-d575524b9e9f",
+          "color": "ord-color-seq-4",
+          "id": "4551e1c9-5465-4490-91ed-f2aabc96d8fb",
+          "text": "To what extent did each person make you feel like you didn't know how to take care of yourself?\n"
+        }
+      ],
+      "id": "5c1c2620-dab0-11eb-8fc9-1b84137da2c9",
+      "interviewScript": ""
+    },
+    {
+      "label": "8 - Relationship Change",
+      "type": "CategoricalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "prompts": [
+        {
+          "variable": "e7107960-3ce5-425a-ba69-c56f5fd5a24d",
+          "id": "b4d34072-61d0-4137-b899-b7353b66bb7e",
+          "text": "How has your relationship with this person changed overall in the past year?\n"
+        }
+      ],
+      "id": "5c01f020-9e95-11ed-8ec6-bf6e5d15c6b3",
+      "filter": {
+        "join": "OR",
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "3c85d60a-1c74-4cf2-b4d8-9d060950ccfb",
+              "value": true
+            },
+            "id": "9ef19f3a-8b56-4edb-a822-f3505d856c3d"
+          },
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "EXACTLY",
+              "attribute": "75ba95a2-0f85-4f75-b803-7d70874b6790",
+              "value": true
+            },
+            "id": "604e5d7b-c88c-4c13-a5cf-25483e5aa1b0"
+          }
+        ]
+      }
+    },
+    {
+      "label": "8a - Relationship Change (closer)",
+      "type": "OrdinalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "filter": {
+        "join": "OR",
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "INCLUDES",
+              "attribute": "e7107960-3ce5-425a-ba69-c56f5fd5a24d",
+              "value": 5
+            },
+            "id": "7cbaa4e9-56f6-4f43-b2ad-18c1520d01a2"
+          },
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "INCLUDES",
+              "attribute": "e7107960-3ce5-425a-ba69-c56f5fd5a24d",
+              "value": 4
+            },
+            "id": "dc4ef708-77a3-446e-9605-0d27afe7caef"
+          }
+        ]
+      },
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "rules": [
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "bd6ab7a2-671e-4d76-824d-af5367f24e46",
+                "value": true
+              },
+              "id": "62299895-232a-4f4a-a12c-0d4b3d3b5e4c"
+            }
+          ]
+        }
+      },
+      "prompts": [
+        {
+          "variable": "87785bf5-1515-48fb-b6b5-80a26a505d4b",
+          "color": "ord-color-seq-5",
+          "id": "d5dd9c0c-e70a-4a80-97c7-c5897bcee015",
+          "text": "You indicated that your relationship with these people became closer in the past year. For each person, to what extent was this because of the incident?\n"
+        }
+      ],
+      "id": "ba7ea0d0-9e95-11ed-8ec6-bf6e5d15c6b3"
+    },
+    {
+      "label": "8b - Relationship Change (Less Close)",
+      "type": "OrdinalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "filter": {
+        "join": "OR",
+        "rules": [
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "INCLUDES",
+              "attribute": "e7107960-3ce5-425a-ba69-c56f5fd5a24d",
+              "value": 2
+            },
+            "id": "0552082a-7154-4a6e-8dc1-c1e93fed5021"
+          },
+          {
+            "type": "alter",
+            "options": {
+              "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+              "operator": "INCLUDES",
+              "attribute": "e7107960-3ce5-425a-ba69-c56f5fd5a24d",
+              "value": 1
+            },
+            "id": "60486749-0dc5-461c-b847-d5f4f688684c"
+          }
+        ]
+      },
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "rules": [
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "bd6ab7a2-671e-4d76-824d-af5367f24e46",
+                "value": true
+              },
+              "id": "b426b0ea-cc35-44e4-9024-9f98efd90860"
+            }
+          ]
+        }
+      },
+      "prompts": [
+        {
+          "variable": "a9a80d73-8517-4c8c-9715-0897e89520b8",
+          "color": "ord-color-seq-3",
+          "id": "5304bd8f-ee32-4108-b166-2432ac417cbb",
+          "text": "You indicated that your relationship with these people became less close in the past year. For each person, to what extent was this because of the incident?\n"
+        }
+      ],
+      "id": "1f09eaa0-9e96-11ed-8ec6-bf6e5d15c6b3"
+    },
+    {
+      "label": "9 - Gender & Sexual Identity",
+      "type": "EgoForm",
+      "introductionPanel": {
+        "title": "We're going to ask you questions about your identities soon.",
+        "text": "Before we start the separate identity interview, we would like to know a little about who currently knows about your gender and sexual identity.\n"
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "c839965d-0686-4fcf-bd72-dff00fd76de5",
+            "prompt": "How many of your important people know about your gender identity?\n"
+          },
+          {
+            "variable": "37e25c22-5169-414e-ace6-94bfb211ead1",
+            "prompt": "How many of your important people know about your sexual identity?\n"
+          }
+        ]
+      },
+      "id": "efb58270-b883-11ed-9e09-67508b53215d"
+    },
+    {
+      "label": "9a - Who Knows About Gender Identity",
+      "type": "CategoricalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "skipLogic": {
+        "filter": {
+          "rules": [
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "c839965d-0686-4fcf-bd72-dff00fd76de5",
+                "value": 1
+              },
+              "id": "93c22182-7fcd-44e5-86ce-d4f2d52154af"
+            }
+          ]
+        },
+        "action": "SHOW"
+      },
+      "prompts": [
+        {
+          "variable": "a3e4c1bf-05ea-4670-946b-1f552cf1a599",
+          "id": "72cd626c-8bc5-44d4-9554-9df65cec9c84",
+          "text": "Indicate who knows and does not know about your gender identity.\n"
+        }
+      ],
+      "id": "cb918960-b884-11ed-9e09-67508b53215d"
+    },
+    {
+      "label": "9b - Who Knows About Sexual Identity",
+      "type": "CategoricalBin",
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "rules": [
+            {
+              "type": "ego",
+              "options": {
+                "operator": "EXACTLY",
+                "attribute": "37e25c22-5169-414e-ace6-94bfb211ead1",
+                "value": 1
+              },
+              "id": "75f1fa23-f21f-4fc7-8749-8cf3c1988d08"
+            }
+          ]
+        }
+      },
+      "prompts": [
+        {
+          "variable": "688cd176-6a56-4316-8393-5e15e2e301d4",
+          "id": "84ba7ffb-1919-4e5f-a54f-97e9c855f8c9",
+          "text": "Indicate who knows and does not know about your sexual identity.\n"
+        }
+      ],
+      "id": "faa3b520-b884-11ed-9e09-67508b53215d"
+    },
+    {
+      "label": "9 - Review",
+      "behaviours": {
+        "freeDraw": true,
+        "allowRepositioning": true
+      },
+      "type": "Narrative",
+      "background": {
+        "image": "d01c3785-ccfc-4af6-9180-3b40a4ad6483"
+      },
+      "subject": {
+        "type": "f02f1f97-7b15-4c77-92b3-60dc9d175b9b",
+        "entity": "node"
+      },
+      "presets": [
+        {
+          "layoutVariable": "5eb691df-e296-4251-bd78-6e6376d0c395",
+          "groupVariable": "5163e4bf-0498-42c2-b36d-31ada1c07de8",
+          "edges": {
+            "display": [
+              "e5b82444-8f1b-4673-b09f-b320bdada8dc",
+              "4768f07c-11e9-4269-9be5-e5671869dee4"
+            ]
+          },
+          "id": "0b3b122e-7e20-4b16-88d4-5f81cec33785",
+          "label": "Network (current)"
+        }
+      ],
+      "id": "37788910-9e97-11ed-8ec6-bf6e5d15c6b3"
+    }
+  ]
+}

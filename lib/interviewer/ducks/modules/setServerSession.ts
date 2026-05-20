@@ -1,4 +1,5 @@
 import { type Protocol, type Prisma } from '~/lib/db/generated/client';
+import { type PipedData } from '~/schemas/interviews';
 // import type { Protocol } from '@codaco/shared-consts';
 // import type { ServerSession } from '~/app/(interview)/interview/[interviewId]/page';
 
@@ -15,6 +16,7 @@ type ServerSession = {
   protocolId: string;
   currentStep: number;
   sessionMetadata?: Prisma.JsonValue;
+  pipedData?: PipedData;
 };
 
 export const SET_SERVER_SESSION = 'INIT/SET_SERVER_SESSION';
