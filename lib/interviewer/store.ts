@@ -9,7 +9,6 @@ import installedProtocols from '~/lib/interviewer/ducks/modules/installedProtoco
 import sessions from '~/lib/interviewer/ducks/modules/session';
 import ui from '~/lib/interviewer/ducks/modules/ui';
 import type { NcNetwork } from '~/schemas/network-canvas';
-import type { PipedData } from '~/schemas/interviews';
 import logger from './ducks/middleware/logger';
 import sound from './ducks/middleware/sound';
 
@@ -41,7 +40,6 @@ type Session = {
   finishedAt: Date;
   exportedAt: Date;
   stageMetadata?: Record<number, StageMetadata>; // Used as temporary storage by DyadCensus/TieStrengthCensus
-  pipedData?: PipedData; // Pre-populated data for text substitution
 };
 
 type SessionsState = Record<string, Session>;

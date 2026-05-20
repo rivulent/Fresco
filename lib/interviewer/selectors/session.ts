@@ -5,10 +5,11 @@ import { getProtocolStages } from './protocol';
 import { getActiveSession, getStageIndex } from './shared';
 
 // Piped data for text substitution in prompts/information screens
+// Stored inside the network blob as a sibling to nodes/edges/ego
 export const getPipedData = createSelector(
   getActiveSession,
   (session): PipedData | undefined => {
-    return session?.pipedData;
+    return session?.network?.pipedData;
   },
 );
 

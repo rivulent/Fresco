@@ -28,6 +28,7 @@ export const ZNcNetwork = z.object({
   nodes: z.array(ZNcNode),
   edges: z.array(ZNcEdge),
   ego: ZNcEntity,
+  pipedData: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
 });
 
 export type NcNetwork = z.infer<typeof ZNcNetwork>;
