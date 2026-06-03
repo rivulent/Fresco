@@ -38,6 +38,20 @@ export const getProtocolColumns = (
       enableHiding: false,
     },
     {
+      id: 'identifier',
+      accessorKey: 'id',
+      header: ({ column }) => {
+        return <DataTableColumnHeader column={column} title="Identifier" />;
+      },
+      cell: ({ row }) => {
+        return (
+          <div className="flex items-center gap-2" title={row.original.id}>
+            <span className="max-w-56 truncate">{row.original.id}</span>
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: 'name',
       header: ({ column }) => {
         return <DataTableColumnHeader column={column} title="Name" />;
