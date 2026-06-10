@@ -35,6 +35,8 @@ export const activityTypes = [
   'Interview Completed',
   'Interview(s) Deleted',
   'Data Exported',
+  'User Created',
+  'User Deleted',
 ] as const;
 
 export type ActivityType = (typeof activityTypes)[number];

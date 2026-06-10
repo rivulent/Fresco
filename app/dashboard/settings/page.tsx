@@ -4,9 +4,11 @@ import DisableAnalyticsSwitch from '~/components/DisableAnalyticsSwitch';
 import SettingsSection from '~/components/layout/SettingsSection';
 import LimitInterviewsSwitch from '~/components/LimitInterviewsSwitch';
 import Link from '~/components/Link';
+import NextLink from 'next/link';
 import ResponsiveContainer from '~/components/ResponsiveContainer';
 import ToggleSmallScreenWarning from '~/components/ToggleSmallScreenWarning';
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/Alert';
+import { Button } from '~/components/ui/Button';
 import PageHeader from '~/components/ui/typography/PageHeader';
 import Paragraph from '~/components/ui/typography/Paragraph';
 import VersionSection, {
@@ -67,6 +69,19 @@ export default async function Settings() {
           </Paragraph>
           <UpdateUploadThingTokenAlert />
           <UpdateUploadThingToken uploadThingKey={uploadThingKey} />
+        </SettingsSection>
+        <SettingsSection
+          heading="User Management"
+          controlArea={
+            <Button asChild>
+              <NextLink href="/dashboard/settings/users">Manage Users</NextLink>
+            </Button>
+          }
+        >
+          <Paragraph margin="none">
+            Add or remove user accounts for this Fresco installation. All users
+            have full administrative access.
+          </Paragraph>
         </SettingsSection>
         <SettingsSection
           heading="Anonymous Recruitment"
