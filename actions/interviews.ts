@@ -35,6 +35,12 @@ import { ensureError } from '~/utils/ensureError';
 import { addEvent } from './activityFeed';
 import { uploadZipToUploadThing } from './uploadThing';
 
+export async function refreshInterviews() {
+  await requireApiAuth();
+  safeRevalidateTag('getInterviews');
+  return { success: true };
+}
+
 export async function deleteInterviews(data: DeleteInterviews) {
   await requireApiAuth();
 

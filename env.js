@@ -21,6 +21,9 @@ export const env = createEnv({
     DATABASE_URL_UNPOOLED: z.string(),
     PUBLIC_URL: z.string().url().optional(),
     USE_NEON_POSTGRES_ADAPTER: strictBooleanSchema,
+    // SSO Configuration
+    SSO_TOKEN_SECRET: z.string().optional(),
+    SSO_PROVIDER_URL: z.string().url().optional(),
   },
 
   /**
@@ -55,6 +58,8 @@ export const env = createEnv({
     APP_VERSION: process.env.APP_VERSION,
     COMMIT_HASH: process.env.COMMIT_HASH,
     USE_NEON_POSTGRES_ADAPTER: process.env.USE_NEON_POSTGRES_ADAPTER,
+    SSO_TOKEN_SECRET: process.env.SSO_TOKEN_SECRET,
+    SSO_PROVIDER_URL: process.env.SSO_PROVIDER_URL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

@@ -14,6 +14,7 @@ datasource db {
 model User {
   id           String    @id @default(cuid())
   username     String    @unique
+  networkId    String?   @unique // SSO link to Network/Hawthorne user ID
   auth_session Session[]
   key          Key[]
 }

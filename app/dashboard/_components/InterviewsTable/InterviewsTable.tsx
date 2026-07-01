@@ -1,8 +1,10 @@
 'use client';
 
-import { HardDriveUpload } from 'lucide-react';
+import { HardDriveUpload, RefreshCw } from 'lucide-react';
 import { hash as objectHash } from 'ohash';
-import { use, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { use, useMemo, useState, useTransition } from 'react';
+import { refreshInterviews } from '~/actions/interviews';
 import { ActionsDropdown } from '~/app/dashboard/_components/InterviewsTable/ActionsDropdown';
 import { InterviewColumns } from '~/app/dashboard/_components/InterviewsTable/Columns';
 import { DeleteInterviewsDialog } from '~/app/dashboard/interviews/_components/DeleteInterviewsDialog';
@@ -27,11 +29,20 @@ export const InterviewsTable = ({
   protocolsPromise: GetProtocolsReturnType;
 }) => {
   const interviews = use(interviewsPromise);
+  const router = useRouter();
+  const [isRefreshing, startRefreshTransition] = useTransition();
 
   const [selectedInterviews, setSelectedInterviews] =
     useState<typeof interviews>();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+
+  const handleRefresh = () => {
+    startRefreshTransition(async () => {
+      await refreshInterviews();
+      router.refresh();
+    });
+  };
 
   const unexportedInterviews = useMemo(
     () => interviews.filter((interview) => !interview.exportTime),
@@ -94,6 +105,10 @@ export const InterviewsTable = ({
         defaultSortBy={{ id: 'lastUpdated', desc: true }}
         headerItems={
           <>
+            <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`mr-2 inline-block h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button disabled={interviews.length === 0}>

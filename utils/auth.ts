@@ -14,11 +14,16 @@ export const auth = lucia({
   env: env.NODE_ENV === 'production' ? 'PROD' : 'DEV',
   middleware: nextjs_future(),
   sessionCookie: {
-    expires: false,
+    expires: true,
+  },
+  sessionExpiresIn: {
+    activePeriod: 30 * 60 * 1000, // 30 minutes active period
+    idlePeriod: 15 * 60 * 1000, // 15 minutes idle before expiry
   },
   getUserAttributes: (data: User) => {
     return {
       username: data.username,
+      networkId: data.networkId,
     };
   },
   adapter: prismaAdapter(client),

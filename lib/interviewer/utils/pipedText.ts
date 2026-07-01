@@ -6,6 +6,7 @@ import { getPipedData } from '../selectors/session';
 /**
  * Substitutes {{key}} placeholders in text with values from pipedData.
  * Missing keys are replaced with empty string.
+ * Handles backslash-escaped underscores (e.g., {{BL\_IDNAME\_LABEL}} matches BL_IDNAME_LABEL).
  *
  * @example
  * const text = "Hello {{name}}, welcome to wave {{waveNumber}}!";
@@ -19,7 +20,20 @@ export function substitutePipedText(
   if (!text) return '';
   if (!pipedData) return text;
 
-  return text.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+  // Debug: log text that contains {{ to see what we're trying to match
+  if (text.includes('{{')) {
+    // eslint-disable-next-line no-console
+    console.log('[pipedText] Input text:', JSON.stringify(text));
+    // eslint-disable-next-line no-console
+    console.log('[pipedText] pipedData keys:', Object.keys(pipedData));
+  }
+
+  // Match keys that may contain backslash-escaped characters (e.g., {{BL\_IDNAME\_LABEL}})
+  return text.replace(/\{\{([\w\\]+)\}\}/g, (_match, rawKey: string) => {
+    // Strip backslashes to normalize the key (BL\_IDNAME\_LABEL -> BL_IDNAME_LABEL)
+    const key = rawKey.replace(/\\/g, '');
+    // eslint-disable-next-line no-console
+    console.log('[pipedText] Matched:', _match, '-> rawKey:', rawKey, '-> key:', key, '-> value:', pipedData[key]);
     const value = pipedData[key];
     if (value === undefined || value === null) return '';
     return String(value);

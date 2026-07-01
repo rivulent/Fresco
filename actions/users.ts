@@ -37,6 +37,7 @@ export async function createUser(data: unknown) {
       },
       attributes: {
         username,
+        networkId: null,
       },
     });
 

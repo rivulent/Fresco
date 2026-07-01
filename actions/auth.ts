@@ -28,6 +28,7 @@ export async function signup(formData: unknown) {
       },
       attributes: {
         username,
+        networkId: null,
       },
     });
 
