@@ -17,8 +17,8 @@ export const auth = lucia({
     expires: true,
   },
   sessionExpiresIn: {
-    activePeriod: 30 * 60 * 1000, // 30 minutes active period
-    idlePeriod: 15 * 60 * 1000, // 15 minutes idle before expiry
+    activePeriod: 15 * 60 * 1000, // 15 minutes active period
+    idlePeriod: 15 * 60 * 1000, // 15 minutes idle before expiry (30 min total)
   },
   getUserAttributes: (data: User) => {
     return {
