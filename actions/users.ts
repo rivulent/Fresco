@@ -8,6 +8,14 @@ import { createUserSchema } from '~/schemas/auth';
 import { changePasswordSchema, deleteUsersSchema } from '~/schemas/users';
 import { hashPassword, verifyPassword } from '~/utils/password';
 
+export async function getUsers() {
+  await requireApiAuth();
+  return prisma.user.findMany({
+    select: { id: true, username: true },
+    orderBy: { username: 'asc' },
+  });
+}
+
 export async function createUser(data: unknown) {
   const session = await requireApiAuth();
 
@@ -28,6 +36,7 @@ export async function createUser(data: unknown) {
     await prisma.user.create({
       data: {
         username,
+        networkId: null,
         key: {
           create: {
             id: `username:${username}`,

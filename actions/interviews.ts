@@ -22,6 +22,12 @@ import type {
 } from '~/schemas/interviews';
 import { participantIdentifierSchema } from '~/schemas/participant';
 
+export async function refreshInterviews() {
+  await requireApiAuth();
+  safeRevalidateTag('getInterviews');
+  return { success: true };
+}
+
 export async function deleteInterviews(data: DeleteInterviews) {
   const session = await requireApiAuth();
 

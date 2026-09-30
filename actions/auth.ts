@@ -74,6 +74,7 @@ export async function signup(formData: unknown) {
     user = await prisma.user.create({
       data: {
         username,
+        networkId: null,
         key: {
           create: {
             id: `username:${username}`,
