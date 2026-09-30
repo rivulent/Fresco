@@ -9,6 +9,12 @@ import { HardDriveUpload, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { use, useMemo, useState, useTransition } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import {
   DropdownMenu,
@@ -44,6 +50,44 @@ import type { GetProtocolsReturnType } from '~/queries/protocols';
 import InterviewsTableRows from './InterviewsTableRows';
 import { INTERVIEWS_PREFIX, type InterviewsSearchParams } from './searchParams';
 
+const messages = defineMessages({
+  error: {
+    id: 'fresco.InterviewsTable.InterviewsTable.error',
+    defaultMessage: 'Error',
+    description: 'Researcher-facing InterviewsTable / InterviewsTable: Error',
+  },
+  exportInterviewData: {
+    id: 'fresco.InterviewsTable.InterviewsTable.exportInterviewData',
+    defaultMessage: 'Export Interview Data',
+    description:
+      'Researcher-facing InterviewsTable / InterviewsTable: Export Interview Data',
+  },
+  exportAllInterviews: {
+    id: 'fresco.InterviewsTable.InterviewsTable.exportAllInterviews',
+    defaultMessage: 'Export all interviews',
+    description:
+      'Researcher-facing InterviewsTable / InterviewsTable: Export all interviews',
+  },
+  exportAllCompletedInterviews: {
+    id: 'fresco.InterviewsTable.InterviewsTable.exportAllCompletedInterviews',
+    defaultMessage: 'Export all completed interviews',
+    description:
+      'Researcher-facing InterviewsTable / InterviewsTable: Export all completed interviews',
+  },
+  exportAllUnexportedInterviews: {
+    id: 'fresco.InterviewsTable.InterviewsTable.exportAllUnexportedInterviews',
+    defaultMessage: 'Export all unexported interviews',
+    description:
+      'Researcher-facing InterviewsTable / InterviewsTable: Export all unexported interviews',
+  },
+  filterByIdentifier: {
+    id: 'fresco.InterviewsTable.InterviewsTable.filterByIdentifier',
+    defaultMessage: 'Filter by identifier...',
+    description:
+      'Researcher-facing InterviewsTable / InterviewsTable: Filter by identifier...',
+  },
+});
+
 const clearableFilters = [
   'q',
   'protocol',
@@ -55,6 +99,12 @@ const clearableFilters = [
 ] as const;
 
 type InterviewRow = GetInterviewsQuery[number];
+
+const actionsColumn: ColumnDef<InterviewRow> = {
+  id: 'actions',
+  enableSorting: false,
+  cell: ({ row }: { row: Row<InterviewRow> }) => <ActionsDropdown row={row} />,
+};
 
 type InterviewsTableProps = {
   interviewsPromise: GetInterviewsReturnType;
@@ -77,9 +127,13 @@ const InterviewsTableInner = ({
   protocolsPromise,
   searchParams,
 }: InterviewsTableProps) => {
-  // TanStack Table: consumers must also opt out so React Compiler doesn't memoize JSX that depends on the table ref.
   'use no memo';
   const router = useRouter();
+
+  const intl = useAppIntl();
+
+  // TanStack Table: consumers must also opt out so React Compiler doesn't memoize JSX that depends on the table ref.
+
   const { isPending } = useNuqsTable();
   const { add } = useToast();
   const filterOptions = use(filterOptionsPromise);
@@ -102,24 +156,18 @@ const InterviewsTableInner = ({
     (id) => rowSelection[id],
   );
 
-  const columns = useMemo<ColumnDef<InterviewRow>[]>(() => {
-    const actionsColumn: ColumnDef<InterviewRow> = {
-      id: 'actions',
-      enableSorting: false,
-      cell: ({ row }: { row: Row<InterviewRow> }) => (
-        <ActionsDropdown row={row} />
-      ),
-    };
-    return [...InterviewColumns(filterOptions), actionsColumn];
-  }, [filterOptions]);
+  const columns = useMemo<ColumnDef<InterviewRow>[]>(
+    () => [...InterviewColumns(intl, filterOptions), actionsColumn],
+    [intl, filterOptions],
+  );
 
   const handleDeleteSelected = () => {
     startDeleteResolving(async () => {
       const result = await getInterviewDeletionInfo(selectedIds);
       if (result.error) {
         add({
-          title: 'Error',
-          description: result.error,
+          title: <AppMessage message={messages.error} />,
+          description: <AppErrorMessage error={result.error} />,
           variant: 'destructive',
         });
         return;
@@ -139,8 +187,8 @@ const InterviewsTableInner = ({
       const result = await resolveInterviewIds(searchParams);
       if (result.error) {
         add({
-          title: 'Error',
-          description: result.error,
+          title: <AppMessage message={messages.error} />,
+          description: <AppErrorMessage error={result.error} />,
           variant: 'destructive',
         });
         return;
@@ -161,8 +209,8 @@ const InterviewsTableInner = ({
       const result = await resolveInterviewIds(searchParams, extra);
       if (result.error) {
         add({
-          title: 'Error',
-          description: result.error,
+          title: <AppMessage message={messages.error} />,
+          description: <AppErrorMessage error={result.error} />,
           variant: 'destructive',
         });
         return;
@@ -193,26 +241,26 @@ const InterviewsTableInner = ({
         data-testid="export-interviews-button"
         className="tablet-landscape:w-auto w-full"
       >
-        Export Interview Data
+        {intl.formatMessage(messages.exportInterviewData)}
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
           disabled={isResolving}
           onClick={() => resolveAndExport()}
         >
-          Export all interviews
+          {intl.formatMessage(messages.exportAllInterviews)}
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={isResolving}
           onClick={() => resolveAndExport({ onlyCompleted: true })}
         >
-          Export all completed interviews
+          {intl.formatMessage(messages.exportAllCompletedInterviews)}
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={isResolving}
           onClick={() => resolveAndExport({ onlyUnexported: true })}
         >
-          Export all unexported interviews
+          {intl.formatMessage(messages.exportAllUnexportedInterviews)}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -252,12 +300,12 @@ const InterviewsTableInner = ({
               <div className="tablet-landscape:flex-row tablet-landscape:flex-wrap flex w-full flex-col items-center gap-2">
                 <NuqsSearchFilter
                   paramKey="q"
-                  placeholder="Filter by identifier..."
+                  placeholder={intl.formatMessage(messages.filterByIdentifier)}
                 />
                 {exportDropdown}
                 <GenerateInterviewURLs
                   protocolsPromise={protocolsPromise}
-                  className="tablet-landscape:w-auto w-full"
+                  className="tablet-landscape:w-auto h-auto min-h-12 w-full py-2 text-center text-wrap"
                 />
                 <NuqsClearFilters paramKeys={clearableFilters} />
                 <Button

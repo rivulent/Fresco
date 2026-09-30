@@ -7,14 +7,16 @@
   ],
   "type": "module",
   "exports": {
+    "./modern/browser-viewport": "./modern/browser-viewport.js",
     "./modern/disable-animations": "./modern/disable-animations.js",
-    "./modern/setup-path": "./modern/setup-path.js"
+    "./modern/setup-path": "./modern/setup-path.js",
+    "./modern/with-animations-enabled": "./modern/with-animations-enabled.js"
   },
   "dependencies": {
-    "@testing-library/dom": "^10.4.1",
+    "@testing-library/dom": "^10.4.2",
     "motion": "^13.1.0"
   },
   "peerDependencies": {
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.1"
   }
 }

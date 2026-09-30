@@ -5,6 +5,8 @@ import { Trash } from 'lucide-react';
 import { use, useMemo, useState } from 'react';
 import { SuperJSON } from 'superjson';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { DataTableFloatingBar } from '@codaco/fresco-ui/DataTable/DataTableFloatingBar';
@@ -18,11 +20,37 @@ import { ActionsDropdown } from './ActionsDropdown';
 import { getProtocolColumns } from './Columns';
 import { type GetData } from './ProtocolsTable';
 
+const messages = defineMessages({
+  byName: {
+    id: 'fresco.ProtocolsTable.ProtocolsTableClient.byName',
+    defaultMessage: 'by name',
+    description:
+      'Researcher-facing ProtocolsTable / ProtocolsTableClient: by name',
+  },
+  deleteSelected: {
+    id: 'fresco.ProtocolsTable.ProtocolsTableClient.deleteSelected',
+    defaultMessage: 'Delete Selected',
+    description:
+      'Researcher-facing ProtocolsTable / ProtocolsTableClient: Delete Selected',
+  },
+});
+
 export type ProtocolWithInterviews = GetProtocolsQuery[number];
 
+const actionsColumn: ColumnDef<ProtocolWithInterviews> = {
+  id: 'actions',
+  cell: ({ row }: { row: Row<ProtocolWithInterviews> }) => (
+    <ActionsDropdown row={row} />
+  ),
+};
+
 const ProtocolsTableClient = ({ dataPromise }: { dataPromise: GetData }) => {
-  // TanStack Table: consumers must also opt out so React Compiler doesn't memoize JSX that depends on the table ref.
   'use no memo';
+
+  const intl = useAppIntl();
+
+  // TanStack Table: consumers must also opt out so React Compiler doesn't memoize JSX that depends on the table ref.
+
   const [rawProtocols, allowAnonymousRecruitment, storageConfigured] =
     use(dataPromise);
   const protocols = useMemo(
@@ -39,17 +67,12 @@ const ProtocolsTableClient = ({ dataPromise }: { dataPromise: GetData }) => {
     setShowAlertDialog(true);
   };
 
-  const actionsColumn: ColumnDef<ProtocolWithInterviews> = {
-    id: 'actions',
-    cell: ({ row }: { row: Row<ProtocolWithInterviews> }) => (
-      <ActionsDropdown row={row} />
-    ),
-  };
-
   const columns = useMemo<ColumnDef<ProtocolWithInterviews>[]>(
-    () => [...getProtocolColumns(allowAnonymousRecruitment), actionsColumn],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allowAnonymousRecruitment],
+    () => [
+      ...getProtocolColumns(intl, allowAnonymousRecruitment),
+      actionsColumn,
+    ],
+    [intl, allowAnonymousRecruitment],
   );
 
   const { table } = useClientDataTable({
@@ -65,7 +88,9 @@ const ProtocolsTableClient = ({ dataPromise }: { dataPromise: GetData }) => {
         toolbar={
           <DataTableToolbar
             table={table}
-            searchableColumns={[{ id: 'name', title: 'by name' }]}
+            searchableColumns={[
+              { id: 'name', title: intl.formatMessage(messages.byName) },
+            ]}
           >
             <ProtocolUploader buttonDisabled={!storageConfigured} />
           </DataTableToolbar>
@@ -81,7 +106,7 @@ const ProtocolsTableClient = ({ dataPromise }: { dataPromise: GetData }) => {
               color="destructive"
               icon={<Trash className="size-4" />}
             >
-              Delete Selected
+              {intl.formatMessage(messages.deleteSelected)}
             </Button>
           </DataTableFloatingBar>
         }

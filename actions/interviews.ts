@@ -3,6 +3,11 @@
 import { createId } from '@paralleldrive/cuid2';
 import { after } from 'next/server';
 
+import {
+  createMessageError,
+  createAppIntl,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
 import { createInitialNetwork } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { ensureError } from '@codaco/shared-consts';
@@ -20,7 +25,70 @@ import type {
   CreateInterviewResult,
   DeleteInterviews,
 } from '~/schemas/interviews';
-import { participantIdentifierSchema } from '~/schemas/participant';
+import { createParticipantSchemas } from '~/schemas/participant';
+
+const messages = defineMessages({
+  copyFailedToDeleteInterviews: {
+    id: 'fresco.actions.interviews.copyFailedToDeleteInterviews',
+    defaultMessage: 'Failed to delete interviews',
+    description:
+      'Researcher-facing actions / interviews: Failed to delete interviews',
+  },
+  copyFailedToCommitExport: {
+    id: 'fresco.actions.interviews.copyFailedToCommitExport',
+    defaultMessage: 'Failed to commit export',
+    description:
+      'Researcher-facing actions / interviews: Failed to commit export',
+  },
+  copyFailedToResolveInterviews: {
+    id: 'fresco.actions.interviews.copyFailedToResolveInterviews',
+    defaultMessage: 'Failed to resolve interviews',
+    description:
+      'Researcher-facing actions / interviews: Failed to resolve interviews',
+  },
+  copyFailedToLoadIncompleteInterviews: {
+    id: 'fresco.actions.interviews.copyFailedToLoadIncompleteInterviews',
+    defaultMessage: 'Failed to load incomplete interviews',
+    description:
+      'Researcher-facing actions / interviews: Failed to load incomplete interviews',
+  },
+  copyProtocolNotFound: {
+    id: 'fresco.actions.interviews.copyProtocolNotFound',
+    defaultMessage: 'Protocol not found',
+    description: 'Researcher-facing actions / interviews: Protocol not found',
+  },
+  copyProtocolIsStoredUnderASchemaVersion: {
+    id: 'fresco.actions.interviews.copyProtocolIsStoredUnderASchemaVersion',
+    defaultMessage:
+      'Protocol is stored under a schema version this deployment cannot run. Repair it in Architect and upload it again.',
+    description:
+      'Researcher-facing actions / interviews: Protocol is stored under a schema version this deployment cannot run. Repair it in Architect and upload it again.',
+  },
+  copyInvalidParticipantIdentifier: {
+    id: 'fresco.actions.interviews.copyInvalidParticipantIdentifier',
+    defaultMessage: 'Invalid participant identifier',
+    description:
+      'Researcher-facing actions / interviews: Invalid participant identifier',
+  },
+  copyAnonymousRecruitmentIsNotEnabled: {
+    id: 'fresco.actions.interviews.copyAnonymousRecruitmentIsNotEnabled',
+    defaultMessage: 'Anonymous recruitment is not enabled',
+    description:
+      'Researcher-facing actions / interviews: Anonymous recruitment is not enabled',
+  },
+  copyAnonymousParticipant: {
+    id: 'fresco.actions.interviews.copyAnonymousParticipant',
+    defaultMessage: 'Anonymous Participant',
+    description:
+      'Researcher-facing actions / interviews: Anonymous Participant',
+  },
+  copyFailedToCreateInterview: {
+    id: 'fresco.actions.interviews.copyFailedToCreateInterview',
+    defaultMessage: 'Failed to create interview',
+    description:
+      'Researcher-facing actions / interviews: Failed to create interview',
+  },
+});
 
 export async function refreshInterviews() {
   await requireApiAuth();
@@ -45,6 +113,13 @@ export async function deleteInterviews(data: DeleteInterviews) {
     void addEvent(
       'Interview(s) Deleted',
       `User ${session.user.username} deleted ${deletedInterviews.count} interview(s)`,
+      {
+        kind: 'interviewsDeleted',
+        values: {
+          username: session.user.username,
+          count: deletedInterviews.count,
+        },
+      },
     );
 
     safeUpdateTag('getInterviews');
@@ -53,7 +128,10 @@ export async function deleteInterviews(data: DeleteInterviews) {
 
     return { error: null, interview: deletedInterviews };
   } catch (error) {
-    return { error: 'Failed to delete interviews', interview: null };
+    return {
+      error: createMessageError(messages.copyFailedToDeleteInterviews),
+      interview: null,
+    };
   }
 }
 
@@ -79,13 +157,20 @@ export async function commitInterviewExport(interviewIds: string[]) {
     await addEvent(
       'Data Exported',
       `User ${session.user.username} exported data for ${String(result.count)} interview(s)`,
+      {
+        kind: 'dataExported',
+        values: { username: session.user.username, count: result.count },
+      },
       { interviewCount: result.count },
     );
     safeUpdateTag('getInterviews');
     safeUpdateTag('activityFeed');
     return { error: null, data: { count: result.count } };
   } catch {
-    return { error: 'Failed to commit export', data: null };
+    return {
+      error: createMessageError(messages.copyFailedToCommitExport),
+      data: null,
+    };
   }
 }
 
@@ -98,7 +183,10 @@ export async function resolveInterviewIds(
     const ids = await getInterviewIdsMatching(searchParams, extra);
     return { error: null, ids };
   } catch {
-    return { error: 'Failed to resolve interviews', ids: [] };
+    return {
+      error: createMessageError(messages.copyFailedToResolveInterviews),
+      ids: [],
+    };
   }
 }
 
@@ -115,7 +203,10 @@ export async function getInterviewDeletionInfo(ids: string[]): Promise<{
     });
     return { error: null, data: interviews };
   } catch {
-    return { error: 'Failed to resolve interviews', data: [] };
+    return {
+      error: createMessageError(messages.copyFailedToResolveInterviews),
+      data: [],
+    };
   }
 }
 
@@ -147,7 +238,10 @@ export async function getIncompleteInterviewUrlData(
       })),
     };
   } catch {
-    return { error: 'Failed to load incomplete interviews', data: [] };
+    return {
+      error: createMessageError(messages.copyFailedToLoadIncompleteInterviews),
+      data: [],
+    };
   }
 }
 
@@ -167,6 +261,12 @@ function isMissingProtocol(error: unknown) {
 export async function createInterview(
   data: CreateInterview,
 ): Promise<CreateInterviewResult> {
+  // Participant onboarding remains independent of researcher locale until #1313.
+  const intl = createAppIntl({ locale: 'en' });
+  const { participantIdentifierSchema } = createParticipantSchemas(
+    intl.formatMessage,
+  );
+
   const { participantIdentifier, protocolId } = data;
 
   try {
@@ -184,7 +284,7 @@ export async function createInterview(
     if (!protocol) {
       return {
         errorType: 'no-protocol',
-        error: 'Protocol not found',
+        error: intl.formatMessage(messages.copyProtocolNotFound),
         createdInterviewId: null,
       };
     }
@@ -196,8 +296,9 @@ export async function createInterview(
     if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
       return {
         errorType: 'incompatible-protocol',
-        error:
-          'Protocol is stored under a schema version this deployment cannot run. Repair it in Architect and upload it again.',
+        error: intl.formatMessage(
+          messages.copyProtocolIsStoredUnderASchemaVersion,
+        ),
         createdInterviewId: null,
       };
     }
@@ -213,7 +314,7 @@ export async function createInterview(
       if (!parsed.success) {
         return {
           errorType: 'invalid-identifier',
-          error: 'Invalid participant identifier',
+          error: intl.formatMessage(messages.copyInvalidParticipantIdentifier),
           createdInterviewId: null,
         };
       }
@@ -227,7 +328,9 @@ export async function createInterview(
       if (!allowAnonymousRecruitment) {
         return {
           errorType: 'no-anonymous-recruitment',
-          error: 'Anonymous recruitment is not enabled',
+          error: intl.formatMessage(
+            messages.copyAnonymousRecruitmentIsNotEnabled,
+          ),
           createdInterviewId: null,
         };
       }
@@ -252,7 +355,7 @@ export async function createInterview(
       : {
           create: {
             identifier: `p-${createId()}`,
-            label: 'Anonymous Participant',
+            label: intl.formatMessage(messages.copyAnonymousParticipant),
           },
         };
 
@@ -278,6 +381,7 @@ export async function createInterview(
     void addEvent(
       'Interview Started',
       `Participant "${participantDisplay}" started an interview`,
+      { kind: 'interviewStarted', values: { participant: participantDisplay } },
     );
 
     /**
@@ -301,7 +405,7 @@ export async function createInterview(
     if (isMissingProtocol(error)) {
       return {
         errorType: 'no-protocol',
-        error: 'Protocol not found',
+        error: intl.formatMessage(messages.copyProtocolNotFound),
         createdInterviewId: null,
       };
     }
@@ -315,7 +419,7 @@ export async function createInterview(
 
     return {
       errorType: 'unknown',
-      error: 'Failed to create interview',
+      error: intl.formatMessage(messages.copyFailedToCreateInterview),
       createdInterviewId: null,
     };
   }
