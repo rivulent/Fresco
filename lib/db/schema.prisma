@@ -14,6 +14,7 @@ datasource db {
 model User {
   id                  String               @id @default(cuid())
   username            String               @unique
+  networkId           String?              @unique // SSO link to Rivulent user ID
   auth_session        Session[]
   key                 Key[]
   totpCredential      TotpCredential?
@@ -196,4 +197,13 @@ model RecoveryCode {
   user      User      @relation(references: [id], fields: [user_id], onDelete: Cascade)
 
   @@index([user_id])
+}
+
+model UsedNonce {
+  id        String   @id @default(cuid())
+  nonce     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
 }

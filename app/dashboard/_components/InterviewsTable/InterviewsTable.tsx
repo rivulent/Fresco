@@ -5,7 +5,8 @@ import {
   type Row,
   type RowSelectionState,
 } from '@tanstack/react-table';
-import { HardDriveUpload } from 'lucide-react';
+import { HardDriveUpload, RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { use, useMemo, useState, useTransition } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
@@ -19,6 +20,7 @@ import { useToast } from '@codaco/fresco-ui/Toast';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   getInterviewDeletionInfo,
+  refreshInterviews,
   resolveInterviewIds,
 } from '~/actions/interviews';
 import { ActionsDropdown } from '~/app/dashboard/_components/InterviewsTable/ActionsDropdown';
@@ -77,9 +79,11 @@ const InterviewsTableInner = ({
 }: InterviewsTableProps) => {
   // TanStack Table: consumers must also opt out so React Compiler doesn't memoize JSX that depends on the table ref.
   'use no memo';
+  const router = useRouter();
   const { isPending } = useNuqsTable();
   const { add } = useToast();
   const filterOptions = use(filterOptionsPromise);
+  const [isRefreshing, startRefreshing] = useTransition();
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [interviewsToDelete, setInterviewsToDelete] = useState<
@@ -173,6 +177,13 @@ const InterviewsTableInner = ({
     setShowExportModal(false);
   };
 
+  const handleRefresh = () => {
+    startRefreshing(async () => {
+      await refreshInterviews();
+      router.refresh();
+    });
+  };
+
   const exportDropdown = (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -249,6 +260,19 @@ const InterviewsTableInner = ({
                   className="tablet-landscape:w-auto w-full"
                 />
                 <NuqsClearFilters paramKeys={clearableFilters} />
+                <Button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  variant="outline"
+                  icon={
+                    <RefreshCw
+                      className={isRefreshing ? 'animate-spin' : undefined}
+                    />
+                  }
+                  className="tablet-landscape:w-auto w-full"
+                >
+                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                </Button>
               </div>
             }
           />

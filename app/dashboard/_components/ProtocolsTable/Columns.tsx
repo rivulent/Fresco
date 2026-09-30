@@ -55,6 +55,21 @@ export const getProtocolColumns = (
       },
     },
     {
+      id: 'identifier',
+      accessorKey: 'id',
+      header: ({ column }) => {
+        return <DataTableColumnHeader column={column} title="Identifier" />;
+      },
+      cell: ({ row }) => {
+        return (
+          <span className="max-w-56 truncate" title={row.original.id}>
+            {row.original.id}
+          </span>
+        );
+      },
+      enableSorting: false,
+    },
+    {
       accessorKey: 'importedAt',
       sortingFn: 'datetime',
       header: ({ column }) => {

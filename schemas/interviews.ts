@@ -1,5 +1,15 @@
 import { type Participant, type Protocol } from '~/lib/db/generated/client';
 
+/**
+ * Piped-in data for text substitution in prompts/information screens.
+ * Stored in interview.network.pipedData.
+ *
+ * NOTE: Text substitution using {{key}} syntax requires support in the
+ * @codaco/interview package. Currently this data structure is passed through
+ * but substitution is not yet implemented in the upstream package.
+ */
+export type PipedData = Record<string, string | number | boolean | null>;
+
 export type DeleteInterviews = {
   id: string;
 }[];

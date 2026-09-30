@@ -6,8 +6,8 @@ import { env } from '~/env';
 import { prisma } from '~/lib/db';
 
 export const SESSION_COOKIE_NAME = 'auth_session';
-const SESSION_ACTIVE_PERIOD_MS = 1000 * 60 * 60 * 24; // 24 hours
-const SESSION_IDLE_PERIOD_MS = 1000 * 60 * 60 * 24 * 14; // 2 weeks
+const SESSION_ACTIVE_PERIOD_MS = 1000 * 60 * 30; // 30 minutes (to match Rivulent)
+const SESSION_IDLE_PERIOD_MS = 1000 * 60 * 30; // 30 minutes (to match Rivulent)
 
 export async function createSessionCookie(userId: string) {
   const sessionId = createId();

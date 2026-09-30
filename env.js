@@ -28,6 +28,7 @@ export const env = createEnv({
     S3_ACCESS_KEY_ID: z.preprocess(emptyToUndefined, z.string().optional()),
     S3_SECRET_ACCESS_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
     UPLOADTHING_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
+    SSO_TOKEN_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
   },
 
   /**
@@ -74,6 +75,7 @@ export const env = createEnv({
     S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
     UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
+    SSO_TOKEN_SECRET: process.env.SSO_TOKEN_SECRET,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

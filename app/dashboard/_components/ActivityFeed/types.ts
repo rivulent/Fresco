@@ -14,6 +14,7 @@ export const activityTypes = [
   'API Token Updated',
   'API Token Deleted',
   'User Login',
+  'SSO Login',
   'User Created',
   'User Deleted',
   'Password Changed',
