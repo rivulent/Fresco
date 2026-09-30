@@ -424,9 +424,3 @@ export async function createInterview(
     };
   }
 }
-
-export async function refreshInterviews() {
-  await requireApiAuth();
-  safeRevalidateTag('getInterviews');
-  return { success: true };
-}
