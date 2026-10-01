@@ -1,19 +1,61 @@
-import { AlertCircle, Loader2, Trash2 } from 'lucide-react';
-import type { Dispatch, SetStateAction } from 'react';
-import { useEffect, useState } from 'react';
+'use client';
+
+import { Trash2 } from 'lucide-react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import { useState } from 'react';
+
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import { Button } from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { deleteProtocols } from '~/actions/protocols';
-import { Alert, AlertDescription, AlertTitle } from '~/components/ui/Alert';
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '~/components/ui/AlertDialog';
-import { Button } from '~/components/ui/Button';
-import type { ProtocolWithInterviews } from '~/types/types';
+
+import type { ProtocolWithInterviews } from '../../_components/ProtocolsTable/ProtocolsTableClient';
+
+const messages = defineMessages({
+  title: {
+    id: 'fresco.deleteProtocols.title',
+    defaultMessage: 'Are you absolutely sure?',
+    description: 'Permanent protocol deletion confirmation title.',
+  },
+  description: {
+    id: 'fresco.deleteProtocols.description',
+    defaultMessage:
+      'This action cannot be undone. This will permanently delete {count, plural, one {# protocol} other {# protocols}}.',
+    description: 'Permanent deletion warning; count is the selection size.',
+  },
+  warning: {
+    id: 'fresco.deleteProtocols.warning',
+    defaultMessage: 'Warning',
+    description: 'Heading for a warning about related interview data.',
+  },
+  unexported: {
+    id: 'fresco.deleteProtocols.unexported',
+    defaultMessage:
+      '{count, plural, one {The selected protocol has interview data that <strong>has not yet been exported.</strong> Deleting this protocol will also delete the interview data.} other {One or more of the selected protocols have interview data that <strong>has not yet been exported.</strong> Deleting these protocols will also delete the interview data.}}',
+    description: 'Warns about deleting related unexported interview data.',
+  },
+  exported: {
+    id: 'fresco.deleteProtocols.exported',
+    defaultMessage:
+      '{count, plural, one {The selected protocol has interview data that will also be deleted.} other {One or more of the selected protocols have interview data that will also be deleted.}} This data is marked as having been exported, but you may wish to confirm this before proceeding.',
+    description: 'Warning for related interview data marked as exported.',
+  },
+  deleting: {
+    id: 'fresco.deleteProtocols.deleting',
+    defaultMessage: 'Deleting\u2026',
+    description: 'Busy state while deleting selected protocols.',
+  },
+  confirm: {
+    id: 'fresco.deleteProtocols.confirm',
+    defaultMessage: 'Permanently Delete',
+    description: 'Confirmation button for permanent deletion.',
+  },
+});
+
+const renderStrongChunks = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
 
 type DeleteProtocolsDialogProps = {
   open: boolean;
@@ -26,25 +68,18 @@ export const DeleteProtocolsDialog = ({
   setOpen,
   protocolsToDelete,
 }: DeleteProtocolsDialogProps) => {
+  const intl = useAppIntl();
+
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [protocolsInfo, setProtocolsInfo] = useState<{
-    hasInterviews: boolean;
-    hasUnexportedInterviews: boolean;
-  }>({
-    hasInterviews: false,
-    hasUnexportedInterviews: false,
-  });
-  useEffect(() => {
-    setProtocolsInfo({
-      hasInterviews: protocolsToDelete?.some(
-        (protocol) => protocol.interviews.length > 0,
-      ),
-      hasUnexportedInterviews: protocolsToDelete?.some((protocol) =>
-        protocol.interviews.some((interview) => !interview.exportTime),
-      ),
-    });
-  }, [protocolsToDelete]);
+  const protocolsInfo = {
+    hasInterviews: protocolsToDelete.some(
+      (protocol) => protocol.interviews.length > 0,
+    ),
+    hasUnexportedInterviews: protocolsToDelete.some((protocol) =>
+      protocol.interviews.some((interview) => !interview.exportTime),
+    ),
+  };
 
   const handleConfirm = async () => {
     setIsDeleting(true);
@@ -54,88 +89,58 @@ export const DeleteProtocolsDialog = ({
   };
 
   const handleCancelDialog = () => {
-    setProtocolsInfo({
-      hasInterviews: false,
-      hasUnexportedInterviews: false,
-    });
     setOpen(false);
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={handleCancelDialog}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete{' '}
-            <strong>
-              {protocolsToDelete.length}{' '}
-              {protocolsToDelete.length > 1 ? <>protocols.</> : <>protocol.</>}
-            </strong>
-          </AlertDialogDescription>
-          {protocolsInfo.hasInterviews &&
-            !protocolsInfo.hasUnexportedInterviews && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Warning</AlertTitle>
-                <AlertDescription>
-                  {protocolsToDelete.length > 1 ? (
-                    <>
-                      One or more of the selected protocols have interview data
-                      that will also be deleted.
-                    </>
-                  ) : (
-                    <>
-                      The selected protocol has interview data that will also be
-                      deleted.
-                    </>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-          {protocolsInfo.hasUnexportedInterviews && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Warning</AlertTitle>
-              <AlertDescription>
-                {protocolsToDelete.length > 1 ? (
-                  <>
-                    One or more of the selected protocols have interview data
-                    that <strong>has not yet been exported.</strong> Deleting
-                    these protocols will also delete its interview data.
-                  </>
-                ) : (
-                  <>
-                    The selected protocol has interview data that
-                    <strong> has not yet been exported.</strong> Deleting this
-                    protocol will also delete its interview data.
-                  </>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting} onClick={handleCancelDialog}>
-            Cancel
-          </AlertDialogCancel>
+    <Dialog
+      open={open}
+      closeDialog={() => handleCancelDialog()}
+      title={intl.formatMessage(messages.title)}
+      description={intl.formatMessage(messages.description, {
+        count: protocolsToDelete.length,
+      })}
+      footer={
+        <>
+          <Button disabled={isDeleting} onClick={handleCancelDialog}>
+            {intl.formatMessage(commonMessages.cancel)}
+          </Button>
           <Button
             disabled={isDeleting}
             onClick={() => void handleConfirm()}
-            variant="destructive"
+            icon={<Trash2 />}
+            color="destructive"
           >
-            {isDeleting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="mr-2 h-4 w-4" /> Permanently Delete
-              </>
-            )}
+            {isDeleting
+              ? intl.formatMessage(messages.deleting)
+              : intl.formatMessage(messages.confirm)}
           </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+        </>
+      }
+    >
+      {protocolsInfo.hasInterviews &&
+        !protocolsInfo.hasUnexportedInterviews && (
+          <Alert variant="info">
+            <AlertTitle>{intl.formatMessage(messages.warning)}</AlertTitle>
+            <AlertDescription>
+              {intl.formatMessage(messages.exported, {
+                count: protocolsToDelete.length,
+                strong: renderStrongChunks,
+              })}
+            </AlertDescription>
+          </Alert>
+        )}
+      {protocolsInfo.hasUnexportedInterviews && (
+        <Alert variant="destructive">
+          <AlertTitle>{intl.formatMessage(messages.warning)}</AlertTitle>
+          <AlertDescription>
+            {intl.formatMessage(messages.unexported, {
+              count: protocolsToDelete.length,
+              strong: renderStrongChunks,
+            })}
+          </AlertDescription>
+        </Alert>
+      )}
+    </Dialog>
   );
 };

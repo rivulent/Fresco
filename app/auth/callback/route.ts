@@ -1,22 +1,21 @@
 import * as jose from 'jose';
-import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
-import { env } from '~/env';
+
+import { addEvent } from '~/lib/activityFeed';
+import { createSessionCookie } from '~/lib/auth/session';
 import { prisma } from '~/lib/db';
-import { auth } from '~/utils/auth';
+import { env } from '~/env';
 
-// In-memory nonce tracking (use Redis in production for multi-instance deployments)
-const usedNonces = new Map<string, number>();
-
-// Clean up expired nonces periodically
-function cleanupNonces() {
-  const now = Date.now();
-  for (const [nonce, expiry] of usedNonces.entries()) {
-    if (expiry < now) {
-      usedNonces.delete(nonce);
-    }
-  }
-}
+/**
+ * SSO Callback Route
+ *
+ * Handles JWT-based authentication from Rivulent.
+ * Flow:
+ * 1. Rivulent generates a signed JWT with user info
+ * 2. User is redirected here with ?token=<jwt>
+ * 3. We verify the JWT, find/create the user, create a session
+ * 4. User is redirected to the dashboard (or specified redirect)
+ */
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token');
@@ -47,7 +46,6 @@ export async function GET(request: NextRequest) {
     const { sub, name, nonce } = payload as {
       sub?: string;
       name?: string;
-      email?: string;
       nonce?: string;
     };
 
@@ -58,14 +56,30 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. Check nonce hasn't been used (prevent replay attacks)
-    cleanupNonces();
-    if (usedNonces.has(nonce)) {
+    const existingNonce = await prisma.usedNonce.findUnique({
+      where: { nonce },
+    });
+
+    if (existingNonce) {
       return NextResponse.redirect(
         new URL('/signin?error=token_already_used', request.url),
       );
     }
-    // Mark nonce as used with expiry time
-    usedNonces.set(nonce, Date.now() + 5 * 60 * 1000);
+
+    // Mark nonce as used (expires in 5 minutes for cleanup)
+    await prisma.usedNonce.create({
+      data: {
+        nonce,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      },
+    });
+
+    // Probabilistic cleanup of expired nonces (5% chance)
+    if (Math.random() < 0.05) {
+      void prisma.usedNonce.deleteMany({
+        where: { expiresAt: { lt: new Date() } },
+      });
+    }
 
     // 4. Find or create user by network ID
     let user = await prisma.user.findFirst({
@@ -73,7 +87,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!user) {
-      // Create new user linked to Network
+      // Create new user linked to Rivulent
       // Username derived from name or sub ID
       const username = name ?? `user_${sub}`;
 
@@ -92,20 +106,22 @@ export async function GET(request: NextRequest) {
           networkId: sub,
         },
       });
+
+      void addEvent(
+        'User Created',
+        `SSO user ${finalUsername} created via Rivulent`,
+        { kind: 'userCreated', values: { username: finalUsername, target: finalUsername } },
+      );
     }
 
-    // 5. Create Lucia session
-    const session = await auth.createSession({
-      userId: user.id,
-      attributes: {},
-    });
+    // 5. Create session (SSO users bypass 2FA - Rivulent is trusted)
+    await createSessionCookie(user.id);
 
-    // 6. Set session cookie
-    const sessionCookie = auth.createSessionCookie(session);
-    cookies().set(
-      sessionCookie.name,
-      sessionCookie.value,
-      sessionCookie.attributes,
+    // 6. Log the SSO login
+    void addEvent(
+      'SSO Login',
+      `User ${user.username} logged in via SSO`,
+      { kind: 'ssoLogin', values: { username: user.username } },
     );
 
     // 7. Redirect to requested page or dashboard

@@ -1,146 +1,331 @@
 'use client';
 
+import {
+  type ColumnDef,
+  type Row,
+  type RowSelectionState,
+} from '@tanstack/react-table';
 import { HardDriveUpload, RefreshCw } from 'lucide-react';
-import { hash as objectHash } from 'ohash';
 import { useRouter } from 'next/navigation';
 import { use, useMemo, useState, useTransition } from 'react';
-import { refreshInterviews } from '~/actions/interviews';
-import { ActionsDropdown } from '~/app/dashboard/_components/InterviewsTable/ActionsDropdown';
-import { InterviewColumns } from '~/app/dashboard/_components/InterviewsTable/Columns';
-import { DeleteInterviewsDialog } from '~/app/dashboard/interviews/_components/DeleteInterviewsDialog';
-import { ExportInterviewsDialog } from '~/app/dashboard/interviews/_components/ExportInterviewsDialog';
-import { GenerateInterviewURLs } from '~/app/dashboard/interviews/_components/GenerateInterviewURLs';
-import { DataTable } from '~/components/DataTable/DataTable';
-import { Button } from '~/components/ui/Button';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
+import { Button } from '@codaco/fresco-ui/Button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '~/components/ui/dropdown-menu';
-import type { GetInterviewsReturnType } from '~/queries/interviews';
+} from '@codaco/fresco-ui/DropdownMenu';
+import { useToast } from '@codaco/fresco-ui/Toast';
+import { cx } from '@codaco/fresco-ui/utils/cva';
+import {
+  getInterviewDeletionInfo,
+  refreshInterviews,
+  resolveInterviewIds,
+} from '~/actions/interviews';
+import { ActionsDropdown } from '~/app/dashboard/_components/InterviewsTable/ActionsDropdown';
+import { InterviewColumns } from '~/app/dashboard/_components/InterviewsTable/Columns';
+import { DeleteInterviewsDialog } from '~/app/dashboard/interviews/_components/DeleteInterviewsDialog';
+import { ExportInterviewsDialog } from '~/app/dashboard/interviews/_components/ExportInterviewsDialog';
+import { GenerateInterviewURLs } from '~/app/dashboard/interviews/_components/GenerateInterviewURLs';
+import NuqsClearFilters from '~/components/DataTable/nuqs/NuqsClearFilters';
+import NuqsSearchFilter from '~/components/DataTable/nuqs/NuqsSearchFilter';
+import {
+  NuqsTableProvider,
+  useNuqsTable,
+} from '~/components/DataTable/nuqs/NuqsTableProvider';
+import type {
+  GetInterviewsQuery,
+  GetInterviewsReturnType,
+  InterviewFilterOptions,
+} from '~/queries/interviews';
 import type { GetProtocolsReturnType } from '~/queries/protocols';
 
-export const InterviewsTable = ({
-  interviewsPromise,
-  protocolsPromise,
-}: {
-  interviewsPromise: GetInterviewsReturnType;
-  protocolsPromise: GetProtocolsReturnType;
-}) => {
-  const interviews = use(interviewsPromise);
-  const router = useRouter();
-  const [isRefreshing, startRefreshTransition] = useTransition();
+import InterviewsTableRows from './InterviewsTableRows';
+import { INTERVIEWS_PREFIX, type InterviewsSearchParams } from './searchParams';
 
-  const [selectedInterviews, setSelectedInterviews] =
-    useState<typeof interviews>();
+const messages = defineMessages({
+  error: {
+    id: 'fresco.InterviewsTable.InterviewsTable.error',
+    defaultMessage: 'Error',
+    description: 'Researcher-facing InterviewsTable / InterviewsTable: Error',
+  },
+  exportInterviewData: {
+    id: 'fresco.InterviewsTable.InterviewsTable.exportInterviewData',
+    defaultMessage: 'Export Interview Data',
+    description:
+      'Researcher-facing InterviewsTable / InterviewsTable: Export Interview Data',
+  },
+  exportAllInterviews: {
+    id: 'fresco.InterviewsTable.InterviewsTable.exportAllInterviews',
+    defaultMessage: 'Export all interviews',
+    description:
+      'Researcher-facing InterviewsTable / InterviewsTable: Export all interviews',
+  },
+  exportAllCompletedInterviews: {
+    id: 'fresco.InterviewsTable.InterviewsTable.exportAllCompletedInterviews',
+    defaultMessage: 'Export all completed interviews',
+    description:
+      'Researcher-facing InterviewsTable / InterviewsTable: Export all completed interviews',
+  },
+  exportAllUnexportedInterviews: {
+    id: 'fresco.InterviewsTable.InterviewsTable.exportAllUnexportedInterviews',
+    defaultMessage: 'Export all unexported interviews',
+    description:
+      'Researcher-facing InterviewsTable / InterviewsTable: Export all unexported interviews',
+  },
+  filterByIdentifier: {
+    id: 'fresco.InterviewsTable.InterviewsTable.filterByIdentifier',
+    defaultMessage: 'Filter by identifier...',
+    description:
+      'Researcher-facing InterviewsTable / InterviewsTable: Filter by identifier...',
+  },
+});
+
+const clearableFilters = [
+  'q',
+  'protocol',
+  'started',
+  'updated',
+  'progress',
+  'exported',
+  'network',
+] as const;
+
+type InterviewRow = GetInterviewsQuery[number];
+
+const actionsColumn: ColumnDef<InterviewRow> = {
+  id: 'actions',
+  enableSorting: false,
+  cell: ({ row }: { row: Row<InterviewRow> }) => <ActionsDropdown row={row} />,
+};
+
+type InterviewsTableProps = {
+  interviewsPromise: GetInterviewsReturnType;
+  filterOptionsPromise: Promise<InterviewFilterOptions>;
+  protocolsPromise: GetProtocolsReturnType;
+  searchParams: InterviewsSearchParams;
+};
+
+export const InterviewsTable = (props: InterviewsTableProps) => {
+  return (
+    <NuqsTableProvider prefix={INTERVIEWS_PREFIX}>
+      <InterviewsTableInner {...props} />
+    </NuqsTableProvider>
+  );
+};
+
+const InterviewsTableInner = ({
+  interviewsPromise,
+  filterOptionsPromise,
+  protocolsPromise,
+  searchParams,
+}: InterviewsTableProps) => {
+  'use no memo';
+  const router = useRouter();
+
+  const intl = useAppIntl();
+
+  // TanStack Table: consumers must also opt out so React Compiler doesn't memoize JSX that depends on the table ref.
+
+  const { isPending } = useNuqsTable();
+  const { add } = useToast();
+  const filterOptions = use(filterOptionsPromise);
+  const [isRefreshing, startRefreshing] = useTransition();
+
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [interviewsToDelete, setInterviewsToDelete] = useState<
+    { id: string; exportTime: Date | null }[]
+  >([]);
+  const [selectedInterviewIds, setSelectedInterviewIds] = useState<string[]>(
+    [],
+  );
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [isResolving, startResolving] = useTransition();
+  const [isSelecting, startSelecting] = useTransition();
+  const [isDeleteResolving, startDeleteResolving] = useTransition();
+
+  const selectedIds = Object.keys(rowSelection).filter(
+    (id) => rowSelection[id],
+  );
+
+  const columns = useMemo<ColumnDef<InterviewRow>[]>(
+    () => [...InterviewColumns(intl, filterOptions), actionsColumn],
+    [intl, filterOptions],
+  );
+
+  const handleDeleteSelected = () => {
+    startDeleteResolving(async () => {
+      const result = await getInterviewDeletionInfo(selectedIds);
+      if (result.error) {
+        add({
+          title: <AppMessage message={messages.error} />,
+          description: <AppErrorMessage error={result.error} />,
+          variant: 'destructive',
+        });
+        return;
+      }
+      setInterviewsToDelete(result.data);
+      setShowDeleteModal(true);
+    });
+  };
+
+  const handleExportSelected = () => {
+    setSelectedInterviewIds(selectedIds);
+    setShowExportModal(true);
+  };
+
+  const handleSelectAllMatching = () => {
+    startSelecting(async () => {
+      const result = await resolveInterviewIds(searchParams);
+      if (result.error) {
+        add({
+          title: <AppMessage message={messages.error} />,
+          description: <AppErrorMessage error={result.error} />,
+          variant: 'destructive',
+        });
+        return;
+      }
+      setRowSelection(Object.fromEntries(result.ids.map((id) => [id, true])));
+    });
+  };
+
+  const handleDeselectAll = () => {
+    setRowSelection({});
+  };
+
+  const resolveAndExport = (extra?: {
+    onlyUnexported?: boolean;
+    onlyCompleted?: boolean;
+  }) => {
+    startResolving(async () => {
+      const result = await resolveInterviewIds(searchParams, extra);
+      if (result.error) {
+        add({
+          title: <AppMessage message={messages.error} />,
+          description: <AppErrorMessage error={result.error} />,
+          variant: 'destructive',
+        });
+        return;
+      }
+      setSelectedInterviewIds(result.ids);
+      setShowExportModal(true);
+    });
+  };
+
+  const handleResetExport = () => {
+    setSelectedInterviewIds([]);
+    setShowExportModal(false);
+  };
 
   const handleRefresh = () => {
-    startRefreshTransition(async () => {
+    startRefreshing(async () => {
       await refreshInterviews();
       router.refresh();
     });
   };
 
-  const unexportedInterviews = useMemo(
-    () => interviews.filter((interview) => !interview.exportTime),
-    [interviews],
+  const exportDropdown = (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button icon={<HardDriveUpload />} />}
+        disabled={isResolving}
+        nativeButton
+        data-testid="export-interviews-button"
+        className="tablet-landscape:w-auto w-full"
+      >
+        {intl.formatMessage(messages.exportInterviewData)}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem
+          disabled={isResolving}
+          onClick={() => resolveAndExport()}
+        >
+          {intl.formatMessage(messages.exportAllInterviews)}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={isResolving}
+          onClick={() => resolveAndExport({ onlyCompleted: true })}
+        >
+          {intl.formatMessage(messages.exportAllCompletedInterviews)}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={isResolving}
+          onClick={() => resolveAndExport({ onlyUnexported: true })}
+        >
+          {intl.formatMessage(messages.exportAllUnexportedInterviews)}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
-
-  const completedInterviews = useMemo(
-    () => interviews.filter((interview) => interview.finishTime),
-    [interviews],
-  );
-
-  const handleDelete = (data: typeof interviews) => {
-    setSelectedInterviews(data);
-    setShowDeleteModal(true);
-  };
-
-  const handleExportUnexported = () => {
-    setSelectedInterviews(unexportedInterviews);
-    setShowExportModal(true);
-  };
-
-  const handleExportAll = () => {
-    setSelectedInterviews(interviews);
-    setShowExportModal(true);
-  };
-
-  const handleExportCompleted = () => {
-    setSelectedInterviews(completedInterviews);
-    setShowExportModal(true);
-  };
-
-  const handleResetExport = () => {
-    setSelectedInterviews([]);
-    setShowExportModal(false);
-  };
 
   return (
     <>
       <ExportInterviewsDialog
-        key={objectHash(selectedInterviews)}
         open={showExportModal}
         handleCancel={handleResetExport}
-        interviewsToExport={selectedInterviews!}
+        interviewIds={selectedInterviewIds}
       />
       <DeleteInterviewsDialog
         open={showDeleteModal}
         setOpen={setShowDeleteModal}
-        interviewsToDelete={selectedInterviews ?? []}
+        interviewsToDelete={interviewsToDelete}
       />
-      <DataTable
-        columns={InterviewColumns()}
-        data={interviews}
-        filterColumnAccessorKey="identifier"
-        handleDeleteSelected={handleDelete}
-        handleExportSelected={(selected) => {
-          setSelectedInterviews(selected);
-          setShowExportModal(true);
-        }}
-        actions={ActionsDropdown}
-        defaultSortBy={{ id: 'lastUpdated', desc: true }}
-        headerItems={
-          <>
-            <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw className={`mr-2 inline-block h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Refreshing...' : 'Refresh'}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button disabled={interviews.length === 0}>
-                  <HardDriveUpload className="mr-2 inline-block h-4 w-4" />
-                  Export Interview Data
+      <div className="flex flex-col gap-6">
+        <div
+          className={cx(
+            'transition-opacity duration-150',
+            isPending && 'pointer-events-none opacity-60',
+          )}
+          aria-busy={isPending}
+        >
+          <InterviewsTableRows
+            interviewsPromise={interviewsPromise}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+            columns={columns}
+            isBusy={isSelecting || isDeleteResolving}
+            onDeleteSelected={handleDeleteSelected}
+            onExportSelected={handleExportSelected}
+            onSelectAllMatching={handleSelectAllMatching}
+            onDeselectAll={handleDeselectAll}
+            toolbar={
+              <div className="tablet-landscape:flex-row tablet-landscape:flex-wrap flex w-full flex-col items-center gap-2">
+                <NuqsSearchFilter
+                  paramKey="q"
+                  placeholder={intl.formatMessage(messages.filterByIdentifier)}
+                />
+                {exportDropdown}
+                <GenerateInterviewURLs
+                  protocolsPromise={protocolsPromise}
+                  className="tablet-landscape:w-auto h-auto min-h-12 w-full py-2 text-center text-wrap"
+                />
+                <NuqsClearFilters paramKeys={clearableFilters} />
+                <Button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  variant="outline"
+                  icon={
+                    <RefreshCw
+                      className={isRefreshing ? 'animate-spin' : undefined}
+                    />
+                  }
+                  className="tablet-landscape:w-auto w-full"
+                >
+                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={handleExportAll}>
-                  Export all interviews
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={completedInterviews.length === 0}
-                  onClick={handleExportCompleted}
-                >
-                  Export all completed interviews
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={unexportedInterviews.length === 0}
-                  onClick={handleExportUnexported}
-                >
-                  Export all unexported interviews
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <GenerateInterviewURLs
-              interviews={interviews}
-              protocolsPromise={protocolsPromise}
-            />
-          </>
-        }
-      />
+              </div>
+            }
+          />
+        </div>
+      </div>
     </>
   );
 };

@@ -1,27 +1,35 @@
+'use client';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import { SignUpForm } from '~/app/(blobs)/(setup)/_components/SignUpForm';
-import { Alert, AlertDescription, AlertTitle } from '~/components/ui/Alert';
-import Heading from '~/components/ui/typography/Heading';
-import Paragraph from '~/components/ui/typography/Paragraph';
+
+const messages = defineMessages({
+  createAnAdminAccount: {
+    id: 'fresco.OnboardSteps.CreateAccount.createAnAdminAccount',
+    defaultMessage: 'Create an Admin Account',
+    description:
+      'Researcher-facing OnboardSteps / CreateAccount: Create an Admin Account',
+  },
+});
 
 function CreateAccount() {
+  const intl = useAppIntl();
+
   return (
-    <div className="w-[30rem]">
-      <div className="mb-4">
-        <Heading variant="h2">Create an Account</Heading>
-        <Paragraph>
-          To use Fresco, you need to set up an administrator account which will
-          enable to you access the protected parts of the app. Only one
-          administrator account can be created.
-        </Paragraph>
-      </div>
-      <Alert variant="warning">
+    <div className="w-full">
+      <Heading level="h2">
+        {intl.formatMessage(messages.createAnAdminAccount)}
+      </Heading>
+      {/* <Alert variant="warning">
         <AlertTitle>Important</AlertTitle>
         <AlertDescription>
           It is not possible to recover the account details if they are lost.
           Make sure to store the account details in a safe place, such as a
           password manager.
         </AlertDescription>
-      </Alert>
+      </Alert> */}
       <SignUpForm />
     </div>
   );

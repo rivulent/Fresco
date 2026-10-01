@@ -1,13 +1,30 @@
+'use client';
+
 import { FileWarning } from 'lucide-react';
-import Heading from '~/components/ui/typography/Heading';
-import Paragraph from '~/components/ui/typography/Paragraph';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+
+const messages = defineMessages({
+  pageNotFound: {
+    id: 'fresco.notfound.pageNotFound',
+    defaultMessage: 'Page not found.',
+    description: 'Researcher-facing notfound: Page not found.',
+  },
+});
 
 export default function NotFound() {
+  const intl = useAppIntl();
+
   return (
-    <div className="bg-gray-100 flex h-screen flex-col items-center justify-center">
-      <FileWarning className="text-violet-700 mb-4 h-12 w-12" />
-      <Heading variant="h1">404</Heading>
-      <Paragraph variant="lead">Page not found.</Paragraph>
+    <div className="bg-surface flex h-screen flex-col items-center justify-center">
+      <FileWarning className="text-primary mb-4 size-12" />
+      <Heading level="h1">{String(404)}</Heading>
+      <Paragraph intent="lead">
+        {intl.formatMessage(messages.pageNotFound)}
+      </Paragraph>
     </div>
   );
 }

@@ -1,23 +1,65 @@
-import type { Interview } from '~/lib/db/generated/client';
-import { AlertCircle, Loader2, Trash2 } from 'lucide-react';
-import { type Dispatch, type SetStateAction, useEffect, useState } from 'react';
-import { deleteInterviews } from '~/actions/interviews';
-import { Alert, AlertDescription, AlertTitle } from '~/components/ui/Alert';
+'use client';
+
+import { Loader2, Trash2 } from 'lucide-react';
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '~/components/ui/AlertDialog';
-import { Button } from '~/components/ui/Button';
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useState,
+} from 'react';
+
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import { Button } from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import { deleteInterviews } from '~/actions/interviews';
+
+const messages = defineMessages({
+  title: {
+    id: 'fresco.deleteInterviews.title',
+    defaultMessage: 'Are you absolutely sure?',
+    description: 'Permanent interview deletion confirmation title.',
+  },
+  description: {
+    id: 'fresco.deleteInterviews.description',
+    defaultMessage:
+      'This action cannot be undone. This will permanently delete <strong>{count, plural, one {# interview} other {# interviews}}</strong>.',
+    description:
+      'Permanent deletion warning; count is the number of selected interviews.',
+  },
+  warning: {
+    id: 'fresco.deleteInterviews.warning',
+    defaultMessage: 'Warning',
+    description: 'Heading for a warning about unexported interview data.',
+  },
+  unexported: {
+    id: 'fresco.deleteInterviews.unexported',
+    defaultMessage:
+      '{count, plural, one {The selected interview <strong>has not yet been exported.</strong>} other {One or more of the selected interviews <strong>have not yet been exported.</strong>}}',
+    description:
+      'Warns about unexported data before deleting selected interviews.',
+  },
+  deleting: {
+    id: 'fresco.deleteInterviews.deleting',
+    defaultMessage: 'Deleting…',
+    description: 'Busy state while deleting interviews.',
+  },
+  confirm: {
+    id: 'fresco.deleteInterviews.confirm',
+    defaultMessage:
+      '{count, plural, one {Delete interview} other {Delete interviews}}',
+    description: 'Confirm deletion button; count is the selection size.',
+  },
+});
+
+const renderStrongChunks = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
 
 type DeleteInterviewsDialog = {
   open: boolean;
   setOpen: Dispatch<SetStateAction<boolean>>;
-  interviewsToDelete: Interview[];
+  interviewsToDelete: { id: string; exportTime: Date | null }[];
 };
 
 export const DeleteInterviewsDialog = ({
@@ -25,88 +67,71 @@ export const DeleteInterviewsDialog = ({
   setOpen,
   interviewsToDelete,
 }: DeleteInterviewsDialog) => {
-  const [hasUnexported, setHasUnexported] = useState<boolean>(false);
+  const intl = useAppIntl();
+
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    setHasUnexported(
-      interviewsToDelete?.some((interview) => !interview.exportTime),
-    );
-  }, [interviewsToDelete]);
+  const hasUnexported = interviewsToDelete.some(
+    (interview) => !interview.exportTime,
+  );
 
   const handleConfirm = async () => {
     await deleteInterviews(interviewsToDelete.map((d) => ({ id: d.id })));
-    setHasUnexported(false);
 
     setOpen(false);
   };
 
   const handleCancelDialog = () => {
-    setHasUnexported(false);
     setOpen(false);
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={handleCancelDialog}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete{' '}
-            <strong>
-              {interviewsToDelete.length}{' '}
-              {interviewsToDelete.length > 1 ? (
-                <>interviews.</>
-              ) : (
-                <>interview.</>
-              )}
-            </strong>
-          </AlertDialogDescription>
-          {hasUnexported && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Warning</AlertTitle>
-              <AlertDescription>
-                {interviewsToDelete.length > 1 ? (
-                  <>
-                    One or more of the selected interviews
-                    <strong> has not yet been exported.</strong>
-                  </>
-                ) : (
-                  <>
-                    The selected interview
-                    <strong> has not yet been exported.</strong>
-                  </>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting} onClick={handleCancelDialog}>
-            Cancel
-          </AlertDialogCancel>
+    <Dialog
+      accent="destructive"
+      open={open}
+      closeDialog={handleCancelDialog}
+      title={intl.formatMessage(messages.title)}
+      description={intl.formatMessage(messages.description, {
+        count: interviewsToDelete.length,
+        strong: renderStrongChunks,
+      })}
+      footer={
+        <>
+          <Button disabled={isDeleting} onClick={handleCancelDialog}>
+            {intl.formatMessage(commonMessages.cancel)}
+          </Button>
           <Button
             disabled={isDeleting}
+            color="primary"
             onClick={async () => {
               setIsDeleting(true);
               await handleConfirm();
               setIsDeleting(false);
             }}
-            variant="destructive"
+            icon={
+              isDeleting ? <Loader2 className="animate-spin" /> : <Trash2 />
+            }
           >
-            {isDeleting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="mr-2 h-4 w-4" /> Delete
-              </>
-            )}
+            {isDeleting
+              ? intl.formatMessage(messages.deleting)
+              : intl.formatMessage(messages.confirm, {
+                  count: interviewsToDelete.length,
+                })}
           </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+        </>
+      }
+    >
+      {hasUnexported && (
+        <Alert variant="destructive">
+          <AlertTitle>{intl.formatMessage(messages.warning)}</AlertTitle>
+          <AlertDescription>
+            {intl.formatMessage(messages.unexported, {
+              count: interviewsToDelete.length,
+              strong: renderStrongChunks,
+            })}
+          </AlertDescription>
+        </Alert>
+      )}
+    </Dialog>
   );
 };

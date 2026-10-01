@@ -3,8 +3,20 @@
 import * as blobs2 from 'blobs/v2';
 import { interpolatePath as interpolate } from 'd3-interpolate-path';
 import { memo, useMemo } from 'react';
-import { random, randomInt } from '~/utils/general';
+
 import Canvas from './Canvas';
+
+const random = (a = 1, b = 0) => {
+  const lower = Math.min(a, b);
+  const upper = Math.max(a, b);
+  return lower + Math.random() * (upper - lower);
+};
+
+const randomInt = (a = 1, b = 0) => {
+  const lower = Math.ceil(Math.min(a, b));
+  const upper = Math.floor(Math.max(a, b));
+  return Math.floor(lower + Math.random() * (upper - lower + 1));
+};
 
 const gradients = [
   ['rgb(237,0,140)', 'rgb(226,33,91)'],
@@ -247,9 +259,9 @@ const BackgroundBlobs = memo(
   }: BackgroundBlobsProps) => {
     const blobs = useMemo(
       () => [
-        new Array(large).fill(null).map(() => new NCBlob(3, speedFactor)),
-        new Array(medium).fill(null).map(() => new NCBlob(2, speedFactor)),
-        new Array(small).fill(null).map(() => new NCBlob(1, speedFactor)),
+        Array.from({ length: large }, () => new NCBlob(3, speedFactor)),
+        Array.from({ length: medium }, () => new NCBlob(2, speedFactor)),
+        Array.from({ length: small }, () => new NCBlob(1, speedFactor)),
       ],
       [large, medium, small, speedFactor],
     );

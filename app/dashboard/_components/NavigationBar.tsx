@@ -1,86 +1,215 @@
 'use client';
 
-import { motion } from 'motion/react';
+import type { UrlObject } from 'url';
+
+import { Settings } from 'lucide-react';
+import { motion, useReducedMotion, type Variants } from 'motion/react';
 import type { Route } from 'next';
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { UrlObject } from 'url';
-import Heading from '~/components/ui/typography/Heading';
-import { env } from '~/env';
-import { cn } from '~/utils/shadcn';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import Spinner from '@codaco/fresco-ui/Spinner';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import { cx } from '@codaco/fresco-ui/utils/cva';
+import FrescoLocaleSwitcher from '~/i18n/FrescoLocaleSwitcher';
+
+import { MobileNavDrawer } from './MobileNavDrawer';
 import UserMenu from './UserMenu';
+
+const messages = defineMessages({
+  brand: {
+    id: 'fresco.navigation.brand',
+    defaultMessage: 'Fresco',
+    description: 'Product name. Keep Fresco unchanged in all languages.',
+  },
+
+  dashboard: {
+    id: 'fresco.NavigationBar.dashboard',
+    defaultMessage: 'Dashboard',
+    description: 'Researcher-facing NavigationBar: Dashboard',
+  },
+  protocols: {
+    id: 'fresco.NavigationBar.protocols',
+    defaultMessage: 'Protocols',
+    description: 'Researcher-facing NavigationBar: Protocols',
+  },
+  participants: {
+    id: 'fresco.NavigationBar.participants',
+    defaultMessage: 'Participants',
+    description: 'Researcher-facing NavigationBar: Participants',
+  },
+  interviews: {
+    id: 'fresco.NavigationBar.interviews',
+    defaultMessage: 'Interviews',
+    description: 'Researcher-facing NavigationBar: Interviews',
+  },
+  settings: {
+    id: 'fresco.NavigationBar.settings',
+    defaultMessage: 'Settings',
+    description: 'Researcher-facing NavigationBar: Settings',
+  },
+});
+
+const containerVariants: Variants = {
+  hidden: {
+    y: '-150%',
+  },
+  visible: {
+    y: 0,
+    transition: {
+      type: 'spring',
+      delayChildren: 0.5,
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: '-100%' },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+    },
+  },
+};
+
+const navItemClassName =
+  'focusable relative rounded-full font-semibold whitespace-nowrap outline-offset-10!';
 
 const NavButton = ({
   label,
   href,
   isActive = false,
 }: {
-  label: string;
+  label: string | React.ReactNode;
   href: UrlObject | Route;
   isActive?: boolean;
 }) => {
   return (
-    <motion.li layout className="relative flex flex-col justify-start">
+    <motion.li
+      layout
+      variants={itemVariants}
+      className="relative flex flex-col justify-start"
+    >
       <Link
         href={href}
-        className={cn(
-          'text-sm font-semibold text-primary-foreground',
-          !isActive && 'hover:text-sea-green',
-        )}
+        className={cx(navItemClassName, !isActive && 'hover:text-sea-green')}
       >
-        {label}
+        {isActive && (
+          <motion.div
+            layoutId="active-outline"
+            className="absolute -inset-x-4 -inset-y-2 rounded-full ring-2 ring-current/20"
+          />
+        )}
+        <span className="relative">{label}</span>
       </Link>
-      {isActive && (
-        <motion.div
-          layoutId="underline"
-          className="absolute left-0 right-0 top-[105%] h-[2px] rounded-full bg-primary-foreground"
-        />
-      )}
     </motion.li>
   );
 };
 
 export function NavigationBar() {
+  const intl = useAppIntl();
+
   const pathname = usePathname();
+  const shouldReduceMotion = useReducedMotion();
 
   return (
-    <motion.nav className="flex items-center justify-between gap-4 bg-cyber-grape px-4 py-3">
-      <Link href="/" className="flex items-center space-x-2">
-        <Image src="/favicon.png" alt="Fresco" width={50} height={50} />
-        <Heading variant="h3" className="hidden text-white lg:block">
-          Fresco
-          <sup className="align-super text-xs">{env.APP_VERSION}</sup>
-        </Heading>
-      </Link>
-      <ul className="flex items-center gap-10">
-        <NavButton
-          href="/dashboard"
-          isActive={pathname === '/dashboard'}
-          label="Dashboard"
-        />
-        <NavButton
-          label="Protocols"
-          href="/dashboard/protocols"
-          isActive={pathname === '/dashboard/protocols'}
-        />
-        <NavButton
-          label="Participants"
-          href="/dashboard/participants"
-          isActive={pathname === '/dashboard/participants'}
-        />
-        <NavButton
-          label="Interviews"
-          href="/dashboard/interviews"
-          isActive={pathname === '/dashboard/interviews'}
-        />
-        <NavButton
-          label="Settings"
-          href="/dashboard/settings"
-          isActive={pathname === '/dashboard/settings'}
-        />
-      </ul>
-      <UserMenu />
-    </motion.nav>
+    <div className="sticky top-4 z-50 flex items-center justify-center">
+      <MotionSurface
+        as="nav"
+        spacing="none"
+        className={cx(
+          'text-primary-contrast tablet-portrait:gap-4 bg-primary sticky top-4 flex max-w-5xl grow items-center justify-between gap-2 overflow-visible rounded-full px-6 py-2 shadow-lg shadow-black/25 backdrop-blur-sm',
+        )}
+        variants={containerVariants}
+        initial={shouldReduceMotion ? false : 'hidden'}
+        animate="visible"
+        noContainer
+      >
+        <Link href="/" className="focusable flex items-center gap-2 rounded-sm">
+          <Spinner size="sm" animationMode="hover" playOnMount />
+          <Heading
+            level="h4"
+            className="laptop:block hidden font-extrabold"
+            margin="none"
+          >
+            {intl.formatMessage(messages.brand)}
+          </Heading>
+        </Link>
+        <ul className="tablet-landscape:flex tablet-portrait:gap-10 hidden items-center gap-4">
+          <NavButton
+            href="/dashboard"
+            isActive={pathname === '/dashboard'}
+            label={intl.formatMessage(messages.dashboard)}
+          />
+          <NavButton
+            label={intl.formatMessage(messages.protocols)}
+            href="/dashboard/protocols"
+            isActive={pathname === '/dashboard/protocols'}
+          />
+          <NavButton
+            label={intl.formatMessage(messages.participants)}
+            href="/dashboard/participants"
+            isActive={pathname === '/dashboard/participants'}
+          />
+          <NavButton
+            label={intl.formatMessage(messages.interviews)}
+            href="/dashboard/interviews"
+            isActive={pathname === '/dashboard/interviews'}
+          />
+        </ul>
+        <div className="tablet-landscape:gap-6 flex items-center gap-2">
+          <div className="tablet-landscape:flex hidden">
+            <NavButton
+              label={
+                <div className="flex items-center gap-2">
+                  <Settings className="inline-block" />
+                  <span className="laptop:inline hidden">
+                    {intl.formatMessage(messages.settings)}
+                  </span>
+                </div>
+              }
+              href="/dashboard/settings"
+              isActive={pathname === '/dashboard/settings'}
+            />
+          </div>
+
+          <motion.div
+            variants={itemVariants}
+            className="tablet-landscape:flex hidden"
+          >
+            <FrescoLocaleSwitcher
+              renderTrigger={
+                // Named by the switcher, which sets the language on it at runtime.
+                // oxlint-disable-next-line jsx-a11y/control-has-associated-label
+                <button
+                  type="button"
+                  className={cx(
+                    navItemClassName,
+                    'hover:text-sea-green data-popup-open:text-sea-green flex cursor-pointer items-center',
+                  )}
+                />
+              }
+            />
+          </motion.div>
+
+          <motion.div
+            variants={itemVariants}
+            className="tablet-landscape:block hidden"
+          >
+            <UserMenu />
+          </motion.div>
+
+          <div className="tablet-landscape:hidden">
+            <MobileNavDrawer />
+          </div>
+        </div>
+      </MotionSurface>
+    </div>
   );
 }

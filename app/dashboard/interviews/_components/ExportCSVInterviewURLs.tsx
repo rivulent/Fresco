@@ -3,22 +3,76 @@
 import { Download } from 'lucide-react';
 import { unparse } from 'papaparse';
 import { useState } from 'react';
-import { Button } from '~/components/ui/Button';
-import { useToast } from '~/components/ui/use-toast';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { Button } from '@codaco/fresco-ui/Button';
+import { useToast } from '@codaco/fresco-ui/Toast';
+import type { IncompleteInterviewUrlData } from '~/actions/interviews';
 import { useDownload } from '~/hooks/useDownload';
-import type { GetInterviewsReturnType } from '~/queries/interviews';
-import type { GetProtocolsReturnType } from '~/queries/protocols';
+
+import type { ProtocolWithInterviews } from '../../_components/ProtocolsTable/ProtocolsTableClient';
+
+const messages = defineMessages({
+  copyAnErrorOccurredWhileExportingIncompleteInterview: {
+    id: 'fresco.interviews.ExportCSVInterviewURLs.copyAnErrorOccurredWhileExportingIncompleteInterview',
+    defaultMessage:
+      'An error occurred while exporting incomplete interview URLs',
+    description:
+      'Researcher-facing interviews / ExportCSVInterviewURLs: An error occurred while exporting incomplete interview URLs',
+  },
+  copyExporting: {
+    id: 'fresco.interviews.ExportCSVInterviewURLs.copyExporting',
+    defaultMessage: 'Exporting...',
+    description:
+      'Researcher-facing interviews / ExportCSVInterviewURLs: Exporting...',
+  },
+  copyExport: {
+    id: 'fresco.interviews.ExportCSVInterviewURLs.copyExport',
+    defaultMessage: 'Export',
+    description:
+      'Researcher-facing interviews / ExportCSVInterviewURLs: Export',
+  },
+  success: {
+    id: 'fresco.interviews.ExportCSVInterviewURLs.success',
+    defaultMessage: 'Success',
+    description:
+      'Researcher-facing interviews / ExportCSVInterviewURLs: Success',
+  },
+  incompleteInterviewURLsCSVExportedSuccessfully: {
+    id: 'fresco.interviews.ExportCSVInterviewURLs.incompleteInterviewURLsCSVExportedSuccessfully',
+    defaultMessage: 'Incomplete interview URLs CSV exported successfully',
+    description:
+      'Researcher-facing interviews / ExportCSVInterviewURLs: Incomplete interview URLs CSV exported successfully',
+  },
+  error: {
+    id: 'fresco.interviews.ExportCSVInterviewURLs.error',
+    defaultMessage: 'Error',
+    description: 'Researcher-facing interviews / ExportCSVInterviewURLs: Error',
+  },
+  anErrorOccurredWhileExportingIncompleteInterview: {
+    id: 'fresco.interviews.ExportCSVInterviewURLs.anErrorOccurredWhileExportingIncompleteInterview',
+    defaultMessage:
+      'An error occurred while exporting incomplete interview URLs',
+    description:
+      'Researcher-facing interviews / ExportCSVInterviewURLs: An error occurred while exporting incomplete interview URLs',
+  },
+});
 
 function ExportCSVInterviewURLs({
   protocol,
   interviews,
+  disabled = false,
 }: {
-  protocol?: Awaited<GetProtocolsReturnType>[number];
-  interviews: Awaited<GetInterviewsReturnType>;
+  protocol?: ProtocolWithInterviews;
+  interviews: IncompleteInterviewUrlData[];
+  disabled?: boolean;
 }) {
+  const intl = useAppIntl();
+
   const download = useDownload();
   const [isExporting, setIsExporting] = useState(false);
-  const { toast } = useToast();
+  const { add } = useToast();
 
   const handleExport = () => {
     try {
@@ -26,8 +80,7 @@ function ExportCSVInterviewURLs({
       if (!protocol?.id) return;
 
       const csvData = interviews.map((interview) => ({
-        participant_id: interview.participantId,
-        identifier: interview.participant.identifier,
+        identifier: interview.identifier,
         interview_url: `${window.location.origin}/interview/${interview.id}`,
       }));
 
@@ -42,20 +95,30 @@ function ExportCSVInterviewURLs({
       download(url, fileName);
       // Clean up the URL object
       URL.revokeObjectURL(url);
-      toast({
-        description: 'Incomplete interview URLs CSV exported successfully',
+      add({
+        title: <AppMessage message={messages.success} />,
+        description: (
+          <AppMessage
+            message={messages.incompleteInterviewURLsCSVExportedSuccessfully}
+          />
+        ),
         variant: 'success',
-        duration: 3000,
       });
     } catch (error) {
-      toast({
-        title: 'Error',
-        description:
-          'An error occurred while exporting incomplete interview URLs',
+      add({
+        title: <AppMessage message={messages.error} />,
+        description: (
+          <AppMessage
+            message={messages.anErrorOccurredWhileExportingIncompleteInterview}
+          />
+        ),
         variant: 'destructive',
       });
       throw new Error(
-        'An error occurred while exporting incomplete interview URLs',
+        intl.formatMessage(
+          messages.copyAnErrorOccurredWhileExportingIncompleteInterview,
+        ),
+        { cause: error },
       );
     }
 
@@ -64,12 +127,15 @@ function ExportCSVInterviewURLs({
 
   return (
     <Button
-      disabled={!protocol || isExporting}
+      size="sm"
+      disabled={!protocol || isExporting || disabled}
       onClick={handleExport}
-      className="w-full"
+      icon={<Download />}
+      color="primary"
     >
-      <Download className="mr-2 h-4 w-4" />
-      {isExporting ? 'Exporting...' : 'Export Incomplete Interview URLs'}
+      {isExporting
+        ? intl.formatMessage(messages.copyExporting)
+        : intl.formatMessage(messages.copyExport)}
     </Button>
   );
 }

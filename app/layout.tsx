@@ -1,24 +1,48 @@
-import { Quicksand } from 'next/font/google';
-import { Toaster } from '~/components/ui/toaster';
+import { type Metadata, type Viewport } from 'next';
+import { Suspense } from 'react';
+
+import Providers from '~/components/Providers';
+import AnalyticsLoader from '~/components/Providers/AnalyticsLoader';
+import { env } from '~/env';
+import { FrescoI18nProvider } from '~/i18n/FrescoI18nProvider';
+import { getFrescoI18nInitialization } from '~/i18n/server';
+
+import '@codaco/tailwind-config/fonts/inclusive-sans.css';
+import '@codaco/tailwind-config/fonts/nunito.css';
 import '~/styles/globals.css';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Network Canvas Fresco',
   description: 'Fresco.',
 };
 
-const quicksand = Quicksand({
-  weight: ['300', '400', '500', '600', '700'],
-  subsets: ['latin', 'latin-ext'],
-  display: 'swap',
-});
+export const viewport: Viewport = {
+  viewportFit: 'cover',
+};
 
 function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${quicksand.className} antialiased`}>
-        {children}
-        <Toaster />
+    <Suspense fallback={null}>
+      <LocalizedRoot>{children}</LocalizedRoot>
+    </Suspense>
+  );
+}
+
+async function LocalizedRoot({ children }: { children: React.ReactNode }) {
+  const initial = await getFrescoI18nInitialization();
+  return (
+    <html lang={initial.locale} dir="ltr">
+      <body className="bg-background publish-colors antialiased">
+        <div className="root min-h-dvh">
+          <FrescoI18nProvider initial={initial}>
+            <Providers disableAnimations={env.CI ?? false}>
+              <Suspense>
+                <AnalyticsLoader />
+              </Suspense>
+              {children}
+            </Providers>
+          </FrescoI18nProvider>
+        </div>
       </body>
     </html>
   );

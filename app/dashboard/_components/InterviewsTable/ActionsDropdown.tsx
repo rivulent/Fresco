@@ -1,33 +1,72 @@
 'use client';
 
-import type { Interview } from '~/lib/db/generated/client';
 import type { Row } from '@tanstack/react-table';
-import { MoreHorizontal } from 'lucide-react';
-import Link from 'next/link';
+import {
+  DeleteIcon,
+  DoorOpenIcon,
+  FileIcon,
+  MoreHorizontal,
+} from 'lucide-react';
 import { hash as objectHash } from 'ohash';
 import { useState } from 'react';
-import { DeleteInterviewsDialog } from '~/app/dashboard/interviews/_components/DeleteInterviewsDialog';
-import { ExportInterviewsDialog } from '~/app/dashboard/interviews/_components/ExportInterviewsDialog';
-import { Button } from '~/components/ui/Button';
+
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { IconButton } from '@codaco/fresco-ui/Button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from '~/components/ui/dropdown-menu';
+} from '@codaco/fresco-ui/DropdownMenu';
+import { DeleteInterviewsDialog } from '~/app/dashboard/interviews/_components/DeleteInterviewsDialog';
+import { ExportInterviewsDialog } from '~/app/dashboard/interviews/_components/ExportInterviewsDialog';
+import type { GetInterviewsQuery } from '~/queries/interviews';
 
-export const ActionsDropdown = ({ row }: { row: Row<Interview> }) => {
+const messages = defineMessages({
+  openMenu: {
+    id: 'fresco.InterviewsTable.ActionsDropdown.openMenu',
+    defaultMessage: 'Open menu',
+    description:
+      'Researcher-facing InterviewsTable / ActionsDropdown: Open menu',
+  },
+  actions: {
+    id: 'fresco.InterviewsTable.ActionsDropdown.actions',
+    defaultMessage: 'Actions',
+    description: 'Researcher-facing InterviewsTable / ActionsDropdown: Actions',
+  },
+  export: {
+    id: 'fresco.InterviewsTable.ActionsDropdown.export',
+    defaultMessage: 'Export',
+    description: 'Researcher-facing InterviewsTable / ActionsDropdown: Export',
+  },
+  enterInterview: {
+    id: 'fresco.InterviewsTable.ActionsDropdown.enterInterview',
+    defaultMessage: 'Enter Interview',
+    description:
+      'Researcher-facing InterviewsTable / ActionsDropdown: Enter Interview',
+  },
+});
+
+type InterviewRow = GetInterviewsQuery[number];
+
+export const ActionsDropdown = ({ row }: { row: Row<InterviewRow> }) => {
+  const intl = useAppIntl();
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [selectedInterviews, setSelectedInterviews] = useState<Interview[]>();
+  const [selectedInterviews, setSelectedInterviews] =
+    useState<InterviewRow[]>();
 
-  const handleDelete = (data: Interview) => {
+  const handleDelete = (data: InterviewRow) => {
     setSelectedInterviews([data]);
     setShowDeleteModal(true);
   };
 
-  const handleExport = (data: Interview) => {
+  const handleExport = (data: InterviewRow) => {
     setSelectedInterviews([data]);
     setShowExportModal(true);
   };
@@ -43,7 +82,9 @@ export const ActionsDropdown = ({ row }: { row: Row<Interview> }) => {
         key={objectHash(selectedInterviews)}
         open={showExportModal}
         handleCancel={handleResetExport}
-        interviewsToExport={selectedInterviews!}
+        interviewIds={(selectedInterviews ?? []).map(
+          (interview) => interview.id,
+        )}
       />
       <DeleteInterviewsDialog
         open={showDeleteModal}
@@ -51,23 +92,47 @@ export const ActionsDropdown = ({ row }: { row: Row<Interview> }) => {
         interviewsToDelete={selectedInterviews ?? []}
       />
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
+        <DropdownMenuTrigger
+          render={
+            <IconButton
+              variant="text"
+              aria-label={intl.formatMessage(messages.openMenu)}
+              icon={<MoreHorizontal />}
+              size="sm"
+            />
+          }
+          nativeButton
+        />
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => handleDelete(row.original)}>
-            Delete
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleExport(row.original)}>
-            Export
-          </DropdownMenuItem>
-          <Link href={`/interview/${row.original.id}`}>
-            <DropdownMenuItem>Enter Interview</DropdownMenuItem>
-          </Link>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>
+              {intl.formatMessage(messages.actions)}
+            </DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => handleDelete(row.original)}
+              icon={<DeleteIcon />}
+            >
+              {intl.formatMessage(commonMessages.delete)}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleExport(row.original)}
+              icon={<FileIcon />}
+            >
+              {intl.formatMessage(messages.export)}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+          {/* Deliberately a full page load rather than a client-side <Link>.
+              Session replay must never run on an interview: it stores the
+              page URL — which is the participant's access credential — inside
+              its payload. A client-side navigation changes the URL and renders
+              the interview before any effect can stop a recorder that is
+              already running, whereas a fresh load re-initialises PostHog with
+              replay disabled before anything is captured. */}
+          <a href={`/interview/${row.original.id}`}>
+            <DropdownMenuItem icon={<DoorOpenIcon />}>
+              {intl.formatMessage(messages.enterInterview)}
+            </DropdownMenuItem>
+          </a>
         </DropdownMenuContent>
       </DropdownMenu>
     </>

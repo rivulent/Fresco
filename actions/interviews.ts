@@ -1,39 +1,94 @@
 'use server';
 
 import { createId } from '@paralleldrive/cuid2';
-import { unlink } from 'node:fs/promises';
+import { after } from 'next/server';
+
 import {
-  Prisma,
-  type Interview,
-  type Protocol,
-} from '~/lib/db/generated/client';
-import { cookies } from 'next/headers';
-import trackEvent from '~/lib/analytics';
-import { safeRevalidateTag } from '~/lib/cache';
-import type { InstalledProtocols } from '~/lib/interviewer/store';
-import { formatExportableSessions } from '~/lib/network-exporters/formatters/formatExportableSessions';
-import archive from '~/lib/network-exporters/formatters/session/archive';
-import { generateOutputFiles } from '~/lib/network-exporters/formatters/session/generateOutputFiles';
-import groupByProtocolProperty from '~/lib/network-exporters/formatters/session/groupByProtocolProperty';
-import { insertEgoIntoSessionNetworks } from '~/lib/network-exporters/formatters/session/insertEgoIntoSessionNetworks';
-import { resequenceIds } from '~/lib/network-exporters/formatters/session/resequenceIds';
-import type {
-  ExportOptions,
-  ExportReturn,
-} from '~/lib/network-exporters/utils/types';
+  createMessageError,
+  createAppIntl,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+import { createInitialNetwork } from '@codaco/interview/contract';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import { ensureError } from '@codaco/shared-consts';
+import type { InterviewsSearchParams } from '~/app/dashboard/_components/InterviewsTable/searchParams';
+import { addEvent } from '~/lib/activityFeed';
+import { requireApiAuth } from '~/lib/auth/guards';
+import { safeRevalidateTag, safeUpdateTag } from '~/lib/cache';
+import { prisma } from '~/lib/db';
+import { Prisma } from '~/lib/db/generated/client';
+import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
-import { getInterviewsForExport } from '~/queries/interviews';
+import { getInterviewIdsMatching } from '~/queries/interviews';
 import type {
   CreateInterview,
+  CreateInterviewResult,
   DeleteInterviews,
-  SyncInterview,
 } from '~/schemas/interviews';
-import { type NcNetwork } from '~/schemas/network-canvas';
-import { requireApiAuth } from '~/utils/auth';
-import { prisma } from '~/lib/db';
-import { ensureError } from '~/utils/ensureError';
-import { addEvent } from './activityFeed';
-import { uploadZipToUploadThing } from './uploadThing';
+import { createParticipantSchemas } from '~/schemas/participant';
+
+const messages = defineMessages({
+  copyFailedToDeleteInterviews: {
+    id: 'fresco.actions.interviews.copyFailedToDeleteInterviews',
+    defaultMessage: 'Failed to delete interviews',
+    description:
+      'Researcher-facing actions / interviews: Failed to delete interviews',
+  },
+  copyFailedToCommitExport: {
+    id: 'fresco.actions.interviews.copyFailedToCommitExport',
+    defaultMessage: 'Failed to commit export',
+    description:
+      'Researcher-facing actions / interviews: Failed to commit export',
+  },
+  copyFailedToResolveInterviews: {
+    id: 'fresco.actions.interviews.copyFailedToResolveInterviews',
+    defaultMessage: 'Failed to resolve interviews',
+    description:
+      'Researcher-facing actions / interviews: Failed to resolve interviews',
+  },
+  copyFailedToLoadIncompleteInterviews: {
+    id: 'fresco.actions.interviews.copyFailedToLoadIncompleteInterviews',
+    defaultMessage: 'Failed to load incomplete interviews',
+    description:
+      'Researcher-facing actions / interviews: Failed to load incomplete interviews',
+  },
+  copyProtocolNotFound: {
+    id: 'fresco.actions.interviews.copyProtocolNotFound',
+    defaultMessage: 'Protocol not found',
+    description: 'Researcher-facing actions / interviews: Protocol not found',
+  },
+  copyProtocolIsStoredUnderASchemaVersion: {
+    id: 'fresco.actions.interviews.copyProtocolIsStoredUnderASchemaVersion',
+    defaultMessage:
+      'Protocol is stored under a schema version this deployment cannot run. Repair it in Architect and upload it again.',
+    description:
+      'Researcher-facing actions / interviews: Protocol is stored under a schema version this deployment cannot run. Repair it in Architect and upload it again.',
+  },
+  copyInvalidParticipantIdentifier: {
+    id: 'fresco.actions.interviews.copyInvalidParticipantIdentifier',
+    defaultMessage: 'Invalid participant identifier',
+    description:
+      'Researcher-facing actions / interviews: Invalid participant identifier',
+  },
+  copyAnonymousRecruitmentIsNotEnabled: {
+    id: 'fresco.actions.interviews.copyAnonymousRecruitmentIsNotEnabled',
+    defaultMessage: 'Anonymous recruitment is not enabled',
+    description:
+      'Researcher-facing actions / interviews: Anonymous recruitment is not enabled',
+  },
+  copyAnonymousParticipant: {
+    id: 'fresco.actions.interviews.copyAnonymousParticipant',
+    defaultMessage: 'Anonymous Participant',
+    description:
+      'Researcher-facing actions / interviews: Anonymous Participant',
+  },
+  copyFailedToCreateInterview: {
+    id: 'fresco.actions.interviews.copyFailedToCreateInterview',
+    defaultMessage: 'Failed to create interview',
+    description:
+      'Researcher-facing actions / interviews: Failed to create interview',
+  },
+});
 
 export async function refreshInterviews() {
   await requireApiAuth();
@@ -42,7 +97,7 @@ export async function refreshInterviews() {
 }
 
 export async function deleteInterviews(data: DeleteInterviews) {
-  await requireApiAuth();
+  const session = await requireApiAuth();
 
   const idsToDelete = data.map((p) => p.id);
 
@@ -57,184 +112,225 @@ export async function deleteInterviews(data: DeleteInterviews) {
 
     void addEvent(
       'Interview(s) Deleted',
-      `Deleted ${deletedInterviews.count} interview(s)`,
+      `User ${session.user.username} deleted ${deletedInterviews.count} interview(s)`,
+      {
+        kind: 'interviewsDeleted',
+        values: {
+          username: session.user.username,
+          count: deletedInterviews.count,
+        },
+      },
     );
 
-    safeRevalidateTag('getInterviews');
-    safeRevalidateTag('summaryStatistics');
+    safeUpdateTag('getInterviews');
+    safeUpdateTag('summaryStatistics');
+    safeUpdateTag('activityFeed');
 
     return { error: null, interview: deletedInterviews };
   } catch (error) {
-    return { error: 'Failed to delete interviews', interview: null };
-  }
-}
-
-export const updateExportTime = async (interviewIds: Interview['id'][]) => {
-  await requireApiAuth();
-  try {
-    const updatedInterviews = await prisma.interview.updateMany({
-      where: {
-        id: {
-          in: interviewIds,
-        },
-      },
-      data: {
-        exportTime: new Date(),
-      },
-    });
-
-    safeRevalidateTag('getInterviews');
-
-    void addEvent(
-      'Data Exported',
-      `Exported data for ${updatedInterviews.count} interview(s)`,
-    );
-
-    return { error: null, interview: updatedInterviews };
-  } catch (error) {
-    return { error: 'Failed to update interviews', interview: null };
-  }
-};
-
-export const exportInterviews = async (
-  interviewIds: Interview['id'][],
-  exportOptions: ExportOptions,
-): Promise<ExportReturn> => {
-  await requireApiAuth();
-
-  const tempFilePaths: string[] = [];
-  let exportStage = 'fetching interviews from database';
-
-  try {
-    const interviewsSessions = await getInterviewsForExport(interviewIds);
-
-    const protocolsMap = new Map<string, Protocol>();
-    interviewsSessions.forEach((session) => {
-      protocolsMap.set(session.protocol.hash, session.protocol);
-    });
-
-    const formattedProtocols: InstalledProtocols =
-      Object.fromEntries(protocolsMap);
-    const formattedSessions = formatExportableSessions(interviewsSessions);
-
-    exportStage = 'generating export files';
-    const sessionsWithEgo = insertEgoIntoSessionNetworks(formattedSessions);
-    const groupedSessions = groupByProtocolProperty(sessionsWithEgo);
-    const resequencedSessions = resequenceIds(groupedSessions);
-    const exportResults = await generateOutputFiles(
-      formattedProtocols,
-      exportOptions,
-    )(resequencedSessions);
-
-    exportResults.forEach((result) => {
-      if (result.success) {
-        tempFilePaths.push(result.filePath);
-      }
-    });
-
-    exportStage = 'creating zip archive';
-    const archiveResult = await archive(exportResults);
-    tempFilePaths.push(archiveResult.path);
-
-    exportStage = 'uploading zip file';
-    const result = await uploadZipToUploadThing(archiveResult);
-
-    void trackEvent({
-      type: 'DataExported',
-      metadata: {
-        status: result.status,
-        sessions: interviewIds.length,
-        exportOptions,
-        result: result,
-      },
-    });
-
-    safeRevalidateTag('getInterviews');
-
-    return result;
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(error);
-    const e = ensureError(error);
-
-    void trackEvent({
-      type: 'Error',
-      name: e.name,
-      message: e.message,
-      stack: e.stack,
-      metadata: {
-        path: '~/actions/interviews.ts',
-        exportStage,
-        interviewCount: interviewIds.length,
-        exportOptions,
-      },
-    });
-
-    const userMessage = getExportErrorMessage(e, exportStage);
-
     return {
-      status: 'error',
-      error: userMessage,
+      error: createMessageError(messages.copyFailedToDeleteInterviews),
+      interview: null,
     };
-  } finally {
-    await cleanupTempFiles(tempFilePaths);
   }
-};
-
-function getExportErrorMessage(error: Error, stage: string): string {
-  const message = error.message.toLowerCase();
-
-  if (message.includes('heap') || message.includes('memory')) {
-    return `Export ran out of memory while ${stage}. Try exporting fewer interviews at a time.`;
-  }
-
-  if (message.includes('enospc') || message.includes('no space')) {
-    return `Export ran out of disk space while ${stage}. Please free up server storage and try again.`;
-  }
-
-  if (
-    message.includes('timeout') ||
-    message.includes('timedout') ||
-    message.includes('timed out') ||
-    message.includes('etimedout') ||
-    message.includes('econnreset')
-  ) {
-    return `Export timed out while ${stage}. Try exporting fewer interviews at a time.`;
-  }
-
-  if (
-    message.includes('econnrefused') ||
-    message.includes('database') ||
-    message.includes('prisma')
-  ) {
-    return `Database connection failed while ${stage}. Please try again later.`;
-  }
-
-  return `Export failed while ${stage}: ${error.message}`;
 }
 
-async function cleanupTempFiles(filePaths: string[]) {
-  await Promise.allSettled(
-    filePaths.map((filePath) =>
-      unlink(filePath).catch(() => {
-        // Ignore cleanup errors — files may already be deleted
-      }),
-    ),
+/**
+ * Marks interviews exported after the browser has assembled and downloaded the
+ * complete zip. This is the single commit point for a (possibly batched)
+ * export: it sets exportTime, logs one activity event, and — because it is a
+ * server action — triggers Next's route refresh via safeUpdateTag
+ * (read-your-own-writes), so the interviews table shows the new status.
+ */
+export async function commitInterviewExport(interviewIds: string[]) {
+  const session = await requireApiAuth();
+  const ids = [...new Set(interviewIds)];
+  if (ids.length === 0) {
+    return { error: null, data: { count: 0 } };
+  }
+
+  try {
+    const result = await prisma.interview.updateMany({
+      where: { id: { in: ids } },
+      data: { exportTime: new Date() },
+    });
+    await addEvent(
+      'Data Exported',
+      `User ${session.user.username} exported data for ${String(result.count)} interview(s)`,
+      {
+        kind: 'dataExported',
+        values: { username: session.user.username, count: result.count },
+      },
+      { interviewCount: result.count },
+    );
+    safeUpdateTag('getInterviews');
+    safeUpdateTag('activityFeed');
+    return { error: null, data: { count: result.count } };
+  } catch {
+    return {
+      error: createMessageError(messages.copyFailedToCommitExport),
+      data: null,
+    };
+  }
+}
+
+export async function resolveInterviewIds(
+  searchParams: InterviewsSearchParams,
+  extra?: { onlyUnexported?: boolean; onlyCompleted?: boolean },
+): Promise<{ error: string | null; ids: string[] }> {
+  await requireApiAuth();
+  try {
+    const ids = await getInterviewIdsMatching(searchParams, extra);
+    return { error: null, ids };
+  } catch {
+    return {
+      error: createMessageError(messages.copyFailedToResolveInterviews),
+      ids: [],
+    };
+  }
+}
+
+export async function getInterviewDeletionInfo(ids: string[]): Promise<{
+  error: string | null;
+  data: { id: string; exportTime: Date | null }[];
+}> {
+  await requireApiAuth();
+  try {
+    const uniqueIds = [...new Set(ids)];
+    const interviews = await prisma.interview.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true, exportTime: true },
+    });
+    return { error: null, data: interviews };
+  } catch {
+    return {
+      error: createMessageError(messages.copyFailedToResolveInterviews),
+      data: [],
+    };
+  }
+}
+
+export type IncompleteInterviewUrlData = {
+  id: string;
+  identifier: string;
+};
+
+/**
+ * Returns the minimal data needed to build incomplete-interview URL CSVs for a
+ * single protocol: the interview id (for the URL) and participant identifier.
+ * Scoped to incomplete interviews (no finishTime) so the client no longer needs
+ * the full interview list to generate these URLs.
+ */
+export async function getIncompleteInterviewUrlData(
+  protocolId: string,
+): Promise<{ error: string | null; data: IncompleteInterviewUrlData[] }> {
+  await requireApiAuth();
+  try {
+    const interviews = await prisma.interview.findMany({
+      where: { protocolId, finishTime: null },
+      select: { id: true, participant: { select: { identifier: true } } },
+    });
+    return {
+      error: null,
+      data: interviews.map((interview) => ({
+        id: interview.id,
+        identifier: interview.participant.identifier,
+      })),
+    };
+  } catch {
+    return {
+      error: createMessageError(messages.copyFailedToLoadIncompleteInterviews),
+      data: [],
+    };
+  }
+}
+
+/**
+ * Prisma raises P2025 when a nested `connect` cannot resolve the record it
+ * points at. For `createInterview` that can only be the protocol connect, so
+ * it means the protocol was deleted between the existence check below and the
+ * write — the one gap that check cannot close on its own.
+ */
+function isMissingProtocol(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2025'
   );
 }
 
-export async function createInterview(data: CreateInterview) {
+export async function createInterview(
+  data: CreateInterview,
+): Promise<CreateInterviewResult> {
+  // Participant onboarding remains independent of researcher locale until #1313.
+  const intl = createAppIntl({ locale: 'en' });
+  const { participantIdentifierSchema } = createParticipantSchemas(
+    intl.formatMessage,
+  );
+
   const { participantIdentifier, protocolId } = data;
 
   try {
-    if (!participantIdentifier) {
+    // A protocol that no longer exists is the whole answer: nothing else about
+    // the request can be acted on, and reporting any other reason sends the
+    // researcher after a fix that cannot help — enabling anonymous
+    // recruitment, or correcting an identifier on a link that is dead either
+    // way. So this precedes every other return, rather than being reached only
+    // when nothing else fails first.
+    const protocol = await prisma.protocol.findUnique({
+      where: { id: protocolId },
+      select: { id: true, schemaVersion: true },
+    });
+
+    if (!protocol) {
+      return {
+        errorType: 'no-protocol',
+        error: intl.formatMessage(messages.copyProtocolNotFound),
+        createdInterviewId: null,
+      };
+    }
+
+    // A protocol the deploy-time migration left below the runtime's schema
+    // version cannot run an interview — the payload builder refuses it. Refuse
+    // here, before anything is persisted, so a recruitment link to such a
+    // protocol does not record a started-but-unusable interview per attempt.
+    if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
+      return {
+        errorType: 'incompatible-protocol',
+        error: intl.formatMessage(
+          messages.copyProtocolIsStoredUnderASchemaVersion,
+        ),
+        createdInterviewId: null,
+      };
+    }
+
+    // The participant identifier may arrive unauthenticated via /onboard, so
+    // validate it (length, trim, non-whitespace) before it is persisted and
+    // later embedded in activity-feed messages and CSV exports.
+    let validatedIdentifier: string | undefined;
+    if (participantIdentifier !== undefined && participantIdentifier !== '') {
+      const parsed = participantIdentifierSchema.safeParse(
+        participantIdentifier,
+      );
+      if (!parsed.success) {
+        return {
+          errorType: 'invalid-identifier',
+          error: intl.formatMessage(messages.copyInvalidParticipantIdentifier),
+          createdInterviewId: null,
+        };
+      }
+      validatedIdentifier = parsed.data;
+    }
+
+    if (!validatedIdentifier) {
       const allowAnonymousRecruitment = await getAppSetting(
         'allowAnonymousRecruitment',
       );
       if (!allowAnonymousRecruitment) {
         return {
           errorType: 'no-anonymous-recruitment',
-          error: 'Anonymous recruitment is not enabled',
+          error: intl.formatMessage(
+            messages.copyAnonymousRecruitmentIsNotEnabled,
+          ),
           createdInterviewId: null,
         };
       }
@@ -245,21 +341,21 @@ export async function createInterview(data: CreateInterview) {
      * or create a new one with that identifier. If no participant identifier is provided,
      * we create a new anonymous participant with a generated identifier.
      */
-    const participantStatement = participantIdentifier
+    const participantStatement = validatedIdentifier
       ? {
           connectOrCreate: {
             create: {
-              identifier: participantIdentifier,
+              identifier: validatedIdentifier,
             },
             where: {
-              identifier: participantIdentifier,
+              identifier: validatedIdentifier,
             },
           },
         }
       : {
           create: {
             identifier: `p-${createId()}`,
-            label: 'Anonymous Participant',
+            label: intl.formatMessage(messages.copyAnonymousParticipant),
           },
         };
 
@@ -269,7 +365,7 @@ export async function createInterview(data: CreateInterview) {
         id: true,
       },
       data: {
-        network: Prisma.JsonNull,
+        network: createInitialNetwork(),
         participant: participantStatement,
         protocol: {
           connect: {
@@ -279,17 +375,23 @@ export async function createInterview(data: CreateInterview) {
       },
     });
 
+    const { label, identifier } = createdInterview.participant;
+    const participantDisplay = label ? `${label} (${identifier})` : identifier;
+
     void addEvent(
       'Interview Started',
-      `Participant "${
-        createdInterview.participant.label ??
-        createdInterview.participant.identifier
-      }" started an interview`,
+      `Participant "${participantDisplay}" started an interview`,
+      { kind: 'interviewStarted', values: { participant: participantDisplay } },
     );
 
+    /**
+     * NOTE: this function is called from a route handler, so it has to use
+     * revalidateTag rather than updateTag!
+     */
     safeRevalidateTag('getInterviews');
     safeRevalidateTag('getParticipants');
     safeRevalidateTag('summaryStatistics');
+    safeRevalidateTag('activityFeed');
 
     return {
       error: null,
@@ -297,90 +399,28 @@ export async function createInterview(data: CreateInterview) {
       errorType: null,
     };
   } catch (error) {
+    // A participant following a link to a protocol that no longer exists is an
+    // expected outcome of an unauthenticated, user-supplied id — report it to
+    // the caller so it can be explained, but never as an application exception.
+    if (isMissingProtocol(error)) {
+      return {
+        errorType: 'no-protocol',
+        error: intl.formatMessage(messages.copyProtocolNotFound),
+        createdInterviewId: null,
+      };
+    }
+
     const e = ensureError(error);
 
-    void trackEvent({
-      type: 'Error',
-      name: e.name,
-      message: e.message,
-      stack: e.stack,
-      metadata: {
-        path: '/routers/interview.ts',
-      },
+    after(async () => {
+      await captureException(e);
+      await flushPostHog();
     });
 
     return {
-      errorType: e.message,
-      error: 'Failed to create interview',
+      errorType: 'unknown',
+      error: intl.formatMessage(messages.copyFailedToCreateInterview),
       createdInterviewId: null,
     };
-  }
-}
-
-export async function syncInterview(data: SyncInterview) {
-  const { id, network, currentStep, stageMetadata } = data;
-
-  try {
-    await prisma.interview.update({
-      where: {
-        id,
-      },
-      data: {
-        network,
-        currentStep,
-        stageMetadata,
-        lastUpdated: new Date(),
-      },
-    });
-
-    safeRevalidateTag(`getInterviewById-${id}`);
-
-    // eslint-disable-next-line no-console
-    console.log(`🚀 Interview synced with server! (${id})`);
-    return { success: true };
-  } catch (error) {
-    const message = ensureError(error).message;
-    return { success: false, error: message };
-  }
-}
-
-export type SyncInterviewType = typeof syncInterview;
-
-export async function finishInterview(interviewId: Interview['id']) {
-  try {
-    const updatedInterview = await prisma.interview.update({
-      where: {
-        id: interviewId,
-      },
-      data: {
-        finishTime: new Date(),
-      },
-    });
-
-    void addEvent(
-      'Interview Completed',
-      `Interview with ID ${interviewId} has been completed`,
-    );
-
-    const network = JSON.parse(
-      JSON.stringify(updatedInterview.network),
-    ) as NcNetwork;
-
-    void trackEvent({
-      type: 'InterviewCompleted',
-      metadata: {
-        nodeCount: network?.nodes?.length ?? 0,
-        edgeCount: network?.edges?.length ?? 0,
-      },
-    });
-
-    cookies().set(updatedInterview.protocolId, 'completed');
-
-    safeRevalidateTag('getInterviews');
-    safeRevalidateTag('summaryStatistics');
-
-    return { error: null };
-  } catch (error) {
-    return { error: 'Failed to finish interview' };
   }
 }

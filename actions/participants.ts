@@ -1,17 +1,39 @@
 'use server';
 
 import { createId } from '@paralleldrive/cuid2';
-import { addEvent } from '~/actions/activityFeed';
-import { safeRevalidateTag } from '~/lib/cache';
-import {
-  participantListInputSchema,
-  updateSchema,
-} from '~/schemas/participant';
-import { requireApiAuth } from '~/utils/auth';
+
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { ParticipantsSearchParams } from '~/app/dashboard/_components/ParticipantsTable/searchParams';
+import { addEvent } from '~/lib/activityFeed';
+import { requireApiAuth } from '~/lib/auth/guards';
+import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
+import { getParticipantIdsMatching } from '~/queries/participants';
+import { createParticipantSchemas } from '~/schemas/participant';
+
+const messages = defineMessages({
+  copyFailedToResolveParticipants: {
+    id: 'fresco.actions.participants.copyFailedToResolveParticipants',
+    defaultMessage: 'Failed to resolve participants',
+    description:
+      'Researcher-facing actions / participants: Failed to resolve participants',
+  },
+  copyFailedToCreateParticipant: {
+    id: 'fresco.actions.participants.copyFailedToCreateParticipant',
+    defaultMessage: 'Failed to create participant',
+    description:
+      'Researcher-facing actions / participants: Failed to create participant',
+  },
+  copyFailedToUpdateParticipant: {
+    id: 'fresco.actions.participants.copyFailedToUpdateParticipant',
+    defaultMessage: 'Failed to update participant',
+    description:
+      'Researcher-facing actions / participants: Failed to update participant',
+  },
+});
 
 export async function deleteParticipants(participantIds: string[]) {
-  await requireApiAuth();
+  const session = await requireApiAuth();
 
   const result = await prisma.participant.deleteMany({
     where: {
@@ -21,31 +43,104 @@ export async function deleteParticipants(participantIds: string[]) {
 
   void addEvent(
     'Participant(s) Removed',
-    `Deleted ${result.count} participant(s)`,
+    `User ${session.user.username} removed ${result.count} participant(s)`,
+    {
+      kind: 'participantsRemoved',
+      values: { username: session.user.username, count: result.count },
+    },
   );
 
-  safeRevalidateTag('getParticipants');
-  safeRevalidateTag('getInterviews');
-  safeRevalidateTag('summaryStatistics');
+  safeUpdateTag('getParticipants');
+  safeUpdateTag('getInterviews');
+  safeUpdateTag('summaryStatistics');
+  safeUpdateTag('activityFeed');
 }
 
-export async function deleteAllParticipants() {
+export async function resolveParticipantIds(
+  searchParams: ParticipantsSearchParams,
+): Promise<{ error: string | null; ids: string[] }> {
   await requireApiAuth();
+  try {
+    const ids = await getParticipantIdsMatching(searchParams);
+    return { error: null, ids };
+  } catch {
+    return {
+      error: createMessageError(messages.copyFailedToResolveParticipants),
+      ids: [],
+    };
+  }
+}
 
-  const result = await prisma.participant.deleteMany();
+export type ParticipantExportRow = {
+  id: string;
+  identifier: string;
+  label: string | null;
+};
 
-  void addEvent(
-    'Participant(s) Removed',
-    `Deleted ${result.count} participant(s)`,
-  );
+export async function getParticipantsForExport(ids: string[]): Promise<{
+  error: string | null;
+  data: ParticipantExportRow[];
+}> {
+  await requireApiAuth();
+  try {
+    const uniqueIds = [...new Set(ids)];
+    const participants = await prisma.participant.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true, identifier: true, label: true },
+    });
+    return { error: null, data: participants };
+  } catch {
+    return {
+      error: createMessageError(messages.copyFailedToResolveParticipants),
+      data: [],
+    };
+  }
+}
 
-  safeRevalidateTag('getParticipants');
-  safeRevalidateTag('getInterviews');
-  safeRevalidateTag('summaryStatistics');
+export type ParticipantDeletionInfo = {
+  id: string;
+  hasInterviews: boolean;
+  hasUnexportedInterviews: boolean;
+};
+
+export async function getParticipantDeletionInfo(ids: string[]): Promise<{
+  error: string | null;
+  data: ParticipantDeletionInfo[];
+}> {
+  await requireApiAuth();
+  try {
+    const uniqueIds = [...new Set(ids)];
+    const participants = await prisma.participant.findMany({
+      where: { id: { in: uniqueIds } },
+      select: {
+        id: true,
+        _count: { select: { interviews: true } },
+        interviews: { select: { exportTime: true } },
+      },
+    });
+    return {
+      error: null,
+      data: participants.map((participant) => ({
+        id: participant.id,
+        hasInterviews: participant._count.interviews > 0,
+        hasUnexportedInterviews: participant.interviews.some(
+          (interview) => !interview.exportTime,
+        ),
+      })),
+    };
+  } catch {
+    return {
+      error: createMessageError(messages.copyFailedToResolveParticipants),
+      data: [],
+    };
+  }
 }
 
 export async function importParticipants(rawInput: unknown) {
-  await requireApiAuth();
+  const { participantListInputSchema } =
+    createParticipantSchemas(createMessageError);
+
+  const session = await requireApiAuth();
 
   const participantList = participantListInputSchema.parse(rawInput);
 
@@ -81,11 +176,19 @@ export async function importParticipants(rawInput: unknown) {
 
     void addEvent(
       'Participant(s) Added',
-      `Added ${createdParticipants.count} participant(s)`,
+      `User ${session.user.username} added ${createdParticipants.count} participant(s)`,
+      {
+        kind: 'participantsAdded',
+        values: {
+          username: session.user.username,
+          count: createdParticipants.count,
+        },
+      },
     );
 
-    safeRevalidateTag('getParticipants');
-    safeRevalidateTag('summaryStatistics');
+    safeUpdateTag('getParticipants');
+    safeUpdateTag('summaryStatistics');
+    safeUpdateTag('activityFeed');
 
     return {
       error: null,
@@ -94,7 +197,7 @@ export async function importParticipants(rawInput: unknown) {
     };
   } catch (error) {
     return {
-      error: 'Failed to create participant',
+      error: createMessageError(messages.copyFailedToCreateParticipant),
       createdParticipants: null,
       existingParticipants: null,
     };
@@ -102,6 +205,8 @@ export async function importParticipants(rawInput: unknown) {
 }
 
 export async function updateParticipant(rawInput: unknown) {
+  const { updateSchema } = createParticipantSchemas(createMessageError);
+
   await requireApiAuth();
 
   const { existingIdentifier, formData } = updateSchema.parse(rawInput);
@@ -109,20 +214,35 @@ export async function updateParticipant(rawInput: unknown) {
   try {
     const updatedParticipant = await prisma.participant.update({
       where: { identifier: existingIdentifier },
-      data: formData,
+      data: {
+        ...formData,
+        // A cleared label parses to `undefined`, which Prisma reads as "leave
+        // this column alone" — the old label would survive an edit that was
+        // reported as successful. `null` actually removes it.
+        label: formData.label ?? null,
+      },
     });
 
-    safeRevalidateTag('getParticipants');
-    safeRevalidateTag('summaryStatistics');
+    safeUpdateTag('getParticipants');
+    // The interviews dashboard caches the participant identifier alongside each
+    // interview row, so an identifier edit must invalidate it too.
+    safeUpdateTag('getInterviews');
+    safeUpdateTag('summaryStatistics');
 
     return { error: null, participant: updatedParticipant };
   } catch (error) {
-    return { error: 'Failed to update participant', participant: null };
+    return {
+      error: createMessageError(messages.copyFailedToUpdateParticipant),
+      participant: null,
+    };
   }
 }
 
 export async function createParticipant(rawInput: unknown) {
-  await requireApiAuth();
+  const { participantListInputSchema } =
+    createParticipantSchemas(createMessageError);
+
+  const session = await requireApiAuth();
 
   const participants = participantListInputSchema.parse(rawInput);
 
@@ -153,11 +273,19 @@ export async function createParticipant(rawInput: unknown) {
 
     void addEvent(
       'Participant(s) Added',
-      `Added ${createdParticipants.count} participant(s)`,
+      `User ${session.user.username} added ${createdParticipants.count} participant(s)`,
+      {
+        kind: 'participantsAdded',
+        values: {
+          username: session.user.username,
+          count: createdParticipants.count,
+        },
+      },
     );
 
-    safeRevalidateTag('getParticipants');
-    safeRevalidateTag('summaryStatistics');
+    safeUpdateTag('getParticipants');
+    safeUpdateTag('summaryStatistics');
+    safeUpdateTag('activityFeed');
 
     return {
       error: null,
@@ -166,7 +294,7 @@ export async function createParticipant(rawInput: unknown) {
     };
   } catch (error) {
     return {
-      error: 'Failed to create participant',
+      error: createMessageError(messages.copyFailedToCreateParticipant),
       createdParticipants: null,
       existingParticipants: null,
     };

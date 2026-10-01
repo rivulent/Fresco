@@ -1,7 +1,17 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, Suspense } from 'react';
+
+import SetupLoading from '~/components/SetupLoading';
 import { requireAppNotExpired } from '~/queries/appSettings';
 
-export default async function Layout({ children }: { children: ReactNode }) {
+export default function Layout({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<SetupLoading />}>
+      <SetupLayoutContent>{children}</SetupLayoutContent>
+    </Suspense>
+  );
+}
+
+async function SetupLayoutContent({ children }: { children: ReactNode }) {
   await requireAppNotExpired(true);
   return children;
 }

@@ -1,13 +1,16 @@
 'use client';
 
 import { useOptimistic, useTransition } from 'react';
-import { Switch as SwitchUI } from '~/components/ui/switch';
+
+import SwitchUI from '@codaco/fresco-ui/form/fields/ToggleField';
 
 const SwitchWithOptimisticUpdate = ({
+  label,
   initialValue,
   updateValue,
   readOnly,
 }: {
+  label: string;
   initialValue: boolean;
   updateValue: (value: boolean) => Promise<boolean>;
   readOnly?: boolean;
@@ -25,10 +28,11 @@ const SwitchWithOptimisticUpdate = ({
 
   return (
     <SwitchUI
+      aria-label={label}
       disabled={readOnly ?? isTransitioning}
-      checked={optimisticIsActive}
-      onCheckedChange={(checked) =>
-        startTransition(() => updateIsActive(checked))
+      value={optimisticIsActive}
+      onChange={(checked) =>
+        startTransition(() => updateIsActive(checked ?? false))
       }
     />
   );

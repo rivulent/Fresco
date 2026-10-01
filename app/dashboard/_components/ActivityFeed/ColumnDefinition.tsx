@@ -1,65 +1,81 @@
 'use client';
-
-import { type ColumnDef } from '@tanstack/react-table';
-import { Badge } from '~/components/ui/badge';
-import {
-  type ActivityType,
-  type DataTableFilterableColumn,
-  type DataTableSearchableColumn,
-  type Activity,
-  activityTypes,
-} from '~/lib/data-table/types';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { Badge } from '@codaco/fresco-ui/Badge';
+import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
+import { type StrictColumnDef } from '@codaco/fresco-ui/DataTable/types';
+import TimeAgo from '@codaco/fresco-ui/TimeAgo';
+import { formatActivityDetails } from '~/i18n/activityDetails';
 import type { Events } from '~/lib/db/generated/client';
-import TimeAgo from '~/components/ui/TimeAgo';
-import { DataTableColumnHeader } from '~/components/DataTable/ColumnHeader';
-import { getBadgeColorsForActivityType } from './utils';
 
-export function fetchActivityFeedTableColumnDefs(): ColumnDef<
-  Events,
-  unknown
->[] {
+import { formatActivityType } from './messages';
+import { getBadgeColorForActivityType } from './utils';
+
+const messages = defineMessages({
+  time: {
+    id: 'fresco.ActivityFeed.ColumnDefinition.time',
+    defaultMessage: 'Time',
+    description: 'Researcher-facing ActivityFeed / ColumnDefinition: Time',
+  },
+  type: {
+    id: 'fresco.ActivityFeed.ColumnDefinition.type',
+    defaultMessage: 'Type',
+    description: 'Researcher-facing ActivityFeed / ColumnDefinition: Type',
+  },
+  details: {
+    id: 'fresco.ActivityFeed.ColumnDefinition.details',
+    defaultMessage: 'Details',
+    description: 'Researcher-facing ActivityFeed / ColumnDefinition: Details',
+  },
+});
+
+export function fetchActivityFeedTableColumnDefs(
+  intl: IntlShape,
+): StrictColumnDef<Events>[] {
   return [
     {
       accessorKey: 'timestamp',
+      sortingFn: 'datetime',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Time" />
+        <DataTableColumnHeader
+          column={column}
+          title={intl.formatMessage(messages.time)}
+        />
       ),
       cell: ({ row }) => {
         const timestamp: string = row.getValue('timestamp');
-        return (
-          <div className="flex space-x-2 truncate font-medium">
-            <TimeAgo date={timestamp} />
-          </div>
-        );
+        return <TimeAgo date={timestamp} />;
       },
     },
     {
       accessorKey: 'type',
+      sortingFn: 'text',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Type" />
+        <DataTableColumnHeader
+          column={column}
+          title={intl.formatMessage(messages.type)}
+        />
       ),
       cell: ({ row }) => {
-        const activityType: ActivityType = row.getValue('type');
-        const color = getBadgeColorsForActivityType(activityType);
+        const activityType: string = row.getValue('type');
+        const color = getBadgeColorForActivityType(activityType);
         return (
-          <div className="flex min-w-[140px] space-x-2">
-            <Badge className={color}>{activityType}</Badge>
-          </div>
+          <Badge color={color}>{formatActivityType(intl, activityType)}</Badge>
         );
       },
-      enableSorting: false,
       enableHiding: false,
     },
     {
       accessorKey: 'message',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Details" />
+        <DataTableColumnHeader
+          column={column}
+          title={intl.formatMessage(messages.details)}
+        />
       ),
       cell: ({ row }) => (
-        <div className="flex space-x-2">
-          <span className="max-w-full truncate font-medium">
-            {row.original.message}
-          </span>
+        <div className="whitespace-normal">
+          {formatActivityDetails(intl, row.original)}
         </div>
       ),
       enableSorting: false,
@@ -67,21 +83,3 @@ export function fetchActivityFeedTableColumnDefs(): ColumnDef<
     },
   ];
 }
-
-export const filterableColumns: DataTableFilterableColumn<Activity>[] = [
-  {
-    id: 'type',
-    title: 'Type',
-    options: activityTypes.map((status) => ({
-      label: status,
-      value: status,
-    })),
-  },
-] as const;
-
-export const searchableColumns: DataTableSearchableColumn<Activity>[] = [
-  {
-    id: 'message',
-    title: 'by activity details',
-  },
-] as const;

@@ -1,94 +1,117 @@
-import type { Protocol } from '@codaco/shared-consts';
-import type Zip from 'jszip';
+import {
+  defineMessages,
+  createAppIntl,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import {
+  type CurrentProtocol,
+  type ExtractedAsset,
+} from '@codaco/protocol-validation';
+import { type AssetInsertType } from '~/schemas/protocol';
 
-// Fetch protocol.json as a parsed object from the protocol zip.
-export const getProtocolJson = async (protocolZip: Zip) => {
-  const protocolString = await protocolZip
-    ?.file('protocol.json')
-    ?.async('string');
+type FetchedFileAsset = Omit<
+  AssetInsertType,
+  'value' | 'key' | 'size' | 'url'
+> & { file: File };
 
-  if (!protocolString) {
-    throw new Error('protocol.json not found in zip');
-  }
-
-  const protocolJson = (await JSON.parse(protocolString)) as Protocol;
-
-  return protocolJson;
+type ProtocolAssetsResult = {
+  fileAssets: FetchedFileAsset[];
+  apikeyAssets: AssetInsertType[];
 };
 
 /**
- * Fetch all assets listed in the protocol json from the protocol zip, and
- * return them as a collection of ProtocolAsset objects, which includes useful
- * metadata about the asset.
+ * Split what came out of a `.netcanvas` into the rows Fresco stores.
+ *
+ * Structure of an asset in network canvas protocols:
+ *   - An asset in the manifest is an object whose key is a UID.
+ *   - The ID property is the same as the key (duplicated for convenience :/)
+ *   - Name property is the original file name when added to Architect
+ *   - Source property is the internal path to the file in the zip, which is a
+ *     separate UID + file extension.
+ *   - The type property is one of the NC asset types (e.g. 'image', 'video',
+ *     etc.)
+ * Assets with type 'apikey' are handled differently:
+ *   - They are not actually files. The key itself is stored in the value field.
+ *
+ * Two different documents are involved, deliberately. The bytes come from the
+ * archive, and were resolved against the manifest that shipped inside it —
+ * that is the only manifest whose `source` values describe entries that
+ * actually exist in that zip. The metadata written alongside them comes from
+ * the validated protocol, because that is the document being installed: if an
+ * upgrade ever restates an asset, the stored row should describe the protocol
+ * Fresco will run, not the one the researcher happened to export.
+ *
+ * The two are joined on the manifest key, which no upgrade rewrites — an
+ * upgrade that did would leave every stage's asset reference dangling and fail
+ * validation long before reaching here.
  */
-export const getProtocolAssets = async (
-  protocolJson: Protocol,
-  protocolZip: Zip,
-) => {
-  const assetManifest = protocolJson?.assetManifest;
+export const partitionProtocolAssets = (
+  protocol: CurrentProtocol,
+  extractedAssets: ExtractedAsset[],
+): ProtocolAssetsResult => {
+  const assetManifest = protocol.assetManifest;
 
   if (!assetManifest) {
-    return [];
+    return { fileAssets: [], apikeyAssets: [] };
   }
 
-  /**
-   * Structure of an asset in network canvas protocols:
-   *   - An asset in the manifest is an object whose key is a UID.
-   *   - The ID property is the same as the key (duplicated for convinience :/)
-   *   - Name property is the original file name when added to Architect
-   *   - Source property is the internal path to the file in the zip, which is a
-   *     separate UID + file extension.
-   *   - The type property is one of the NC asset types (e.g. 'image', 'video',
-   *     etc.)
-   */
-  const files: {
-    assetId: string;
-    name: string;
-    type: string;
-    file: File;
-  }[] = [];
+  const fileAssets: FetchedFileAsset[] = [];
+  const apikeyAssets: AssetInsertType[] = [];
 
-  await Promise.all(
-    Object.keys(assetManifest).map(async (key) => {
-      const asset = assetManifest[key]!;
+  for (const [assetId, entry] of Object.entries(assetManifest)) {
+    if (entry.type !== 'apikey') continue;
+    apikeyAssets.push({
+      assetId,
+      key: assetId,
+      name: entry.name,
+      type: entry.type,
+      url: '',
+      size: 0,
+      value: entry.value,
+    });
+  }
 
-      const file = await protocolZip
-        ?.file(`assets/${asset.source}`)
-        ?.async('blob');
+  for (const extracted of extractedAssets) {
+    const entry = assetManifest[extracted.id];
+    // An apikey carries a string rather than file data and is handled above.
+    // An id the validated manifest no longer lists was dropped by an upgrade,
+    // so the protocol being installed does not refer to it and Fresco has
+    // nothing to store it against.
+    if (!entry || entry.type === 'apikey') continue;
+    if (typeof extracted.data === 'string') continue;
 
-      if (!file) {
-        throw new Error(
-          `Asset "${asset.source}" was not found in asset folder!`,
-        );
-      }
+    fileAssets.push({
+      assetId: extracted.id,
+      name: entry.source,
+      type: entry.type,
+      // Convert Blob to File with filename
+      file: new File([extracted.data], entry.source),
+    });
+  }
 
-      files.push({
-        assetId: key,
-        name: asset.source,
-        type: asset.type,
-        file: new File([file], asset.source), // Convert Blob to File with filename
-      });
-    }),
-  );
-
-  return files;
+  return { fileAssets, apikeyAssets };
 };
 
 // Helper method for reading a file as an ArrayBuffer. Useful for preparing a
 // File to be read by JSZip.
-export function fileAsArrayBuffer(file: Blob | File): Promise<ArrayBuffer> {
-  return new Promise((resolve) => {
+export function fileAsArrayBuffer(
+  file: Blob | File,
+  formatMessage: (
+    message: MessageDescriptor,
+    values?: Record<string, string | number>,
+  ) => string = createAppIntl({ locale: 'en' }).formatMessage,
+): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.addEventListener('error', (err) => {
+    reader.addEventListener('error', () => {
       reader.abort();
-      // eslint-disable-next-line no-console
-      console.log('readFileHelper Error: ', err);
-      throw new Error('The file could not be read.');
+      reject(new Error(formatMessage(messages.unreadable)));
     });
 
     reader.addEventListener('load', () => {
       if (!reader.result || typeof reader.result === 'string') {
-        throw new Error('The file could not be read.');
+        reject(new Error(formatMessage(messages.unreadable)));
+        return;
       }
 
       resolve(reader.result);
@@ -97,3 +120,12 @@ export function fileAsArrayBuffer(file: Blob | File): Promise<ArrayBuffer> {
     reader.readAsArrayBuffer(file);
   });
 }
+
+const messages = defineMessages({
+  unreadable: {
+    id: 'fresco.protocolImport.files.unreadable',
+    defaultMessage: 'The file could not be read.',
+    description:
+      'Researcher-facing protocolImport.files: The file could not be read.',
+  },
+});

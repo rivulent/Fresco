@@ -1,99 +1,139 @@
 'use client';
 
-import type { Participant, Protocol } from '~/lib/db/generated/client';
-import { useRef, useState } from 'react';
+import { Copy } from 'lucide-react';
+import { memo, useState } from 'react';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { Button } from '@codaco/fresco-ui/Button';
+import SelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '~/components/ui/select';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@codaco/fresco-ui/Popover';
+import { useToast } from '@codaco/fresco-ui/Toast';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type { Protocol } from '~/lib/db/generated/client';
 
-import { PopoverTrigger } from '@radix-ui/react-popover';
-import { Check, Copy } from 'lucide-react';
-import { Button } from '~/components/ui/Button';
-import { Popover, PopoverContent } from '~/components/ui/popover';
-import Paragraph from '~/components/ui/typography/Paragraph';
-import { useToast } from '~/components/ui/use-toast';
-import type { GetProtocolsReturnType } from '~/queries/protocols';
+import type { ProtocolWithInterviews } from '../ProtocolsTable/ProtocolsTableClient';
 
-export const GenerateParticipationURLButton = ({
-  participant,
-  protocols,
-}: {
-  participant: Participant;
-  protocols: Awaited<GetProtocolsReturnType>;
-}) => {
-  const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>();
+const messages = defineMessages({
+  copyCopyingURLToClipboard: {
+    id: 'fresco.ParticipantsTable.GenerateParticipantURLButton.copyCopyingURLToClipboard',
+    defaultMessage: 'Copying URL to clipboard...',
+    description:
+      'Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Copying URL to clipboard...',
+  },
+  copyURLCopiedToClipboard: {
+    id: 'fresco.ParticipantsTable.GenerateParticipantURLButton.copyURLCopiedToClipboard',
+    defaultMessage: 'URL copied to clipboard!',
+    description:
+      'Researcher-facing ParticipantsTable / GenerateParticipantURLButton: URL copied to clipboard!',
+  },
+  failedToCopyURLToClipboard: {
+    id: 'fresco.ParticipantsTable.GenerateParticipantURLButton.failedToCopyURLToClipboard',
+    defaultMessage: 'Failed to copy URL to clipboard.',
+    description:
+      'Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Failed to copy URL to clipboard.',
+  },
+  copyUniqueURL: {
+    id: 'fresco.ParticipantsTable.GenerateParticipantURLButton.copyUniqueURL',
+    defaultMessage: 'Copy Unique URL',
+    description:
+      'Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Copy Unique URL',
+  },
+  selectAProtocolAndTheURLWill: {
+    id: 'fresco.ParticipantsTable.GenerateParticipantURLButton.selectAProtocolAndTheURLWill',
+    defaultMessage:
+      'Select a protocol, and the URL will be copied to your clipboard.',
+    description:
+      'Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Select a protocol, and the URL will be copied to your clipboard.',
+  },
+  selectAProtocol: {
+    id: 'fresco.ParticipantsTable.GenerateParticipantURLButton.selectAProtocol',
+    defaultMessage: 'Select a Protocol...',
+    description:
+      'Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Select a Protocol...',
+  },
+});
 
-  const { toast } = useToast();
+export const GenerateParticipationURLButton = memo(
+  function GenerateParticipationURLButton({
+    participant,
+    protocols,
+  }: {
+    participant: { identifier: string };
+    protocols: ProtocolWithInterviews[];
+  }) {
+    const intl = useAppIntl();
 
-  const handleCopy = (url: string) => {
-    if (url) {
-      navigator.clipboard
-        .writeText(url)
-        .then(() => {
-          toast({
-            title: 'Success!',
-            icon: <Check />,
-            description: 'Participation URL copied to clipboard',
-            variant: 'success',
-          });
-        })
-        .catch(() => {
-          toast({
-            title: 'Error',
-            description: 'Could not copy text',
-            variant: 'destructive',
-          });
+    const [open, setOpen] = useState(false);
+    const [selectedProtocol, setSelectedProtocol] =
+      useState<Partial<Protocol> | null>();
+
+    const { promise } = useToast();
+
+    const handleCopy = (url: string) => {
+      if (url) {
+        void promise(navigator.clipboard.writeText(url), {
+          loading: {
+            description: (
+              <AppMessage message={messages.copyCopyingURLToClipboard} />
+            ),
+          },
+          success: {
+            description: (
+              <AppMessage message={messages.copyURLCopiedToClipboard} />
+            ),
+          },
+          error: {
+            description: (
+              <AppMessage message={messages.failedToCopyURLToClipboard} />
+            ),
+          },
         });
-    }
-  };
+      }
+    };
 
-  const ref = useRef<HTMLButtonElement>(null);
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button size="xs" ref={ref} variant="accent">
-          <Copy className="mr-2 h-4 w-4" />
-          Copy Unique URL
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="flex flex-col gap-2">
-        <Paragraph variant="smallText">
-          Select a protocol, and the URL will be copied to your clipboard.
-        </Paragraph>
-        <Select
-          onValueChange={(value) => {
-            const protocol = protocols.find(
-              (protocol) => protocol.id === value,
-            );
-
-            setSelectedProtocol(protocol);
-            handleCopy(
-              `${window.location.origin}/onboard/${protocol?.id}/?participantIdentifier=${participant.identifier}`,
-            );
-
-            ref.current?.click();
-
-            setSelectedProtocol(null);
-          }}
-          value={selectedProtocol?.id}
+    return (
+      <Popover open={open} onOpenChange={(nextOpen) => setOpen(nextOpen)}>
+        <PopoverTrigger
+          render={<Button size="sm" color="info" icon={<Copy />} />}
         >
-          <SelectTrigger>
-            <SelectValue placeholder="Select a Protocol..." />
-          </SelectTrigger>
-          <SelectContent>
-            {protocols?.map((protocol) => (
-              <SelectItem key={protocol.id} value={protocol.id}>
-                {protocol.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </PopoverContent>
-    </Popover>
-  );
-};
+          {intl.formatMessage(messages.copyUniqueURL)}
+        </PopoverTrigger>
+        <PopoverContent
+          aria-label={intl.formatMessage(messages.copyUniqueURL)}
+          className="flex flex-col gap-2"
+        >
+          <Paragraph intent="smallText">
+            {intl.formatMessage(messages.selectAProtocolAndTheURLWill)}
+          </Paragraph>
+          <SelectField
+            aria-label={intl.formatMessage(messages.selectAProtocol)}
+            name="protocol"
+            size="sm"
+            options={protocols.map((p) => ({ value: p.id, label: p.name }))}
+            onChange={(value) => {
+              const protocol = protocols.find(
+                (candidate) => candidate.id === value,
+              ) as Protocol;
+
+              setSelectedProtocol(protocol);
+              handleCopy(
+                `${window.location.origin}/onboard/${protocol?.id}/?participantIdentifier=${encodeURIComponent(
+                  participant.identifier,
+                )}`,
+              );
+
+              setSelectedProtocol(null);
+            }}
+            value={selectedProtocol?.id}
+            placeholder={intl.formatMessage(messages.selectAProtocol)}
+          />
+        </PopoverContent>
+      </Popover>
+    );
+  },
+);

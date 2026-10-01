@@ -1,53 +1,74 @@
 'use client';
 
-import { Check, Copy } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { Button } from '~/components/ui/Button';
-import { useToast } from '~/components/ui/use-toast';
+import { Copy } from 'lucide-react';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
+import { Button } from '@codaco/fresco-ui/Button';
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
+import { useToast } from '@codaco/fresco-ui/Toast';
+
+const messages = defineMessages({
+  copyCopyingURLToClipboard: {
+    id: 'fresco.ProtocolsTable.AnonymousRecruitmentURLButton.copyCopyingURLToClipboard',
+    defaultMessage: 'Copying URL to clipboard...',
+    description:
+      'Researcher-facing ProtocolsTable / AnonymousRecruitmentURLButton: Copying URL to clipboard...',
+  },
+  copyURLCopiedToClipboard: {
+    id: 'fresco.ProtocolsTable.AnonymousRecruitmentURLButton.copyURLCopiedToClipboard',
+    defaultMessage: 'URL copied to clipboard!',
+    description:
+      'Researcher-facing ProtocolsTable / AnonymousRecruitmentURLButton: URL copied to clipboard!',
+  },
+  failedToCopyURLToClipboard: {
+    id: 'fresco.ProtocolsTable.AnonymousRecruitmentURLButton.failedToCopyURLToClipboard',
+    defaultMessage: 'Failed to copy URL to clipboard.',
+    description:
+      'Researcher-facing ProtocolsTable / AnonymousRecruitmentURLButton: Failed to copy URL to clipboard.',
+  },
+});
 
 export const AnonymousRecruitmentURLButton = ({
   protocolId,
 }: {
   protocolId: string;
 }) => {
-  const { toast } = useToast();
-  const [url, setUrl] = useState<string | null>(null);
+  const { promise } = useToast();
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUrl(`${window.location.origin}/onboard/${protocolId}`);
-    }
-  }, [protocolId]);
+  // The deployment's origin is only knowable in the browser, and the server
+  // renders this button too, so the URL stays empty through the hydrating
+  // render — matching the server's markup — and is derived from then on.
+  const hasHydrated = useHasHydrated();
+  const url = hasHydrated
+    ? `${window.location.origin}/onboard/${protocolId}`
+    : null;
 
   const handleCopyClick = () => {
     if (!url) {
       return;
     }
 
-    navigator.clipboard
-      .writeText(url)
-      .then(() => {
-        toast({
-          title: 'Success!',
-          description: 'URL copied to clipboard',
-          variant: 'success',
-          icon: <Check />,
-        });
-      })
-      .catch((error) => {
-        // eslint-disable-next-line no-console
-        console.error('Could not copy text: ', error);
-        toast({
-          title: 'Error',
-          description: 'Could not copy text',
-          variant: 'destructive',
-        });
-      });
+    void promise(navigator.clipboard.writeText(url), {
+      loading: {
+        description: (
+          <AppMessage message={messages.copyCopyingURLToClipboard} />
+        ),
+      },
+      success: {
+        description: <AppMessage message={messages.copyURLCopiedToClipboard} />,
+      },
+      error: {
+        description: (
+          <AppMessage message={messages.failedToCopyURLToClipboard} />
+        ),
+      },
+    });
   };
 
   return (
-    <Button size="xs" onClick={handleCopyClick} variant="accent">
-      <Copy className="mr-2 h-4 w-4" />
+    <Button size="sm" onClick={handleCopyClick} color="primary">
+      <Copy className="mr-2 size-4" />
       <span className="w-36 truncate">{url}</span>
     </Button>
   );

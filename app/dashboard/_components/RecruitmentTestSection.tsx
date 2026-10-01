@@ -1,18 +1,49 @@
 'use client';
-import type { Participant, Protocol } from '~/lib/db/generated/client';
 import { type Route } from 'next';
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useState } from 'react';
-import { Button } from '~/components/ui/Button';
+import { use, useState } from 'react';
+import { SuperJSON } from 'superjson';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { Button } from '@codaco/fresco-ui/Button';
+import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
+import type { Participant, Protocol } from '~/lib/db/generated/client';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '~/components/ui/select';
-import { type GetParticipantsReturnType } from '~/queries/participants';
-import { type GetProtocolsReturnType } from '~/queries/protocols';
+  type GetParticipantsForSelectQuery,
+  type GetParticipantsForSelectReturnType,
+} from '~/queries/participants';
+import {
+  type GetProtocolsQuery,
+  type GetProtocolsReturnType,
+} from '~/queries/protocols';
+
+const messages = defineMessages({
+  selectAProtocol: {
+    id: 'fresco.RecruitmentTestSection.selectAProtocol',
+    defaultMessage: 'Select a Protocol...',
+    description:
+      'Researcher-facing RecruitmentTestSection: Select a Protocol...',
+  },
+  selectAParticipant: {
+    id: 'fresco.RecruitmentTestSection.selectAParticipant',
+    defaultMessage: 'Select a Participant...',
+    description:
+      'Researcher-facing RecruitmentTestSection: Select a Participant...',
+  },
+  startInterviewWithGET: {
+    id: 'fresco.RecruitmentTestSection.startInterviewWithGET',
+    defaultMessage: 'Start Interview with GET',
+    description:
+      'Researcher-facing RecruitmentTestSection: Start Interview with GET',
+  },
+  startInterviewWithPOST: {
+    id: 'fresco.RecruitmentTestSection.startInterviewWithPOST',
+    defaultMessage: 'Start Interview with POST',
+    description:
+      'Researcher-facing RecruitmentTestSection: Start Interview with POST',
+  },
+});
 
 export default function RecruitmentTestSection({
   protocolsPromise,
@@ -20,23 +51,34 @@ export default function RecruitmentTestSection({
   allowAnonymousRecruitmentPromise,
 }: {
   protocolsPromise: GetProtocolsReturnType;
-  participantsPromise: GetParticipantsReturnType;
+  participantsPromise: GetParticipantsForSelectReturnType;
   allowAnonymousRecruitmentPromise: Promise<boolean>;
 }) {
-  const protocols = use(protocolsPromise);
-  const participants = use(participantsPromise);
+  const intl = useAppIntl();
+
+  const rawProtocols = use(protocolsPromise);
+  const protocols = SuperJSON.parse<GetProtocolsQuery>(rawProtocols);
+  const rawParticipants = use(participantsPromise);
+  const participants =
+    SuperJSON.parse<GetParticipantsForSelectQuery>(rawParticipants);
   const allowAnonymousRecruitment = use(allowAnonymousRecruitmentPromise);
 
-  const [selectedProtocol, setSelectedProtocol] = useState<Protocol>();
+  const [selectedProtocol, setSelectedProtocol] = useState<Partial<Protocol>>();
   const [selectedParticipant, setSelectedParticipant] = useState<Participant>();
 
   const router = useRouter();
 
-  useEffect(() => {
+  // Turning anonymous recruitment on drops any participant already chosen.
+  // Adjusting during render rather than in an effect avoids the extra pass
+  // that would briefly show the stale selection.
+  const [lastAllowAnonymousRecruitment, setLastAllowAnonymousRecruitment] =
+    useState(allowAnonymousRecruitment);
+  if (lastAllowAnonymousRecruitment !== allowAnonymousRecruitment) {
+    setLastAllowAnonymousRecruitment(allowAnonymousRecruitment);
     if (allowAnonymousRecruitment) {
       setSelectedParticipant(undefined);
     }
-  }, [allowAnonymousRecruitment]);
+  }
 
   const buttonDisabled =
     !selectedProtocol || (!allowAnonymousRecruitment && !selectedParticipant);
@@ -46,61 +88,54 @@ export default function RecruitmentTestSection({
       return `/onboard/${selectedProtocol?.id}` as Route;
     }
 
-    return `/onboard/${selectedProtocol?.id}/?participantIdentifier=${selectedParticipant?.identifier}` as Route;
+    return `/onboard/${selectedProtocol?.id}/?participantIdentifier=${encodeURIComponent(
+      selectedParticipant.identifier,
+    )}` as Route;
   };
 
   return (
     <>
-      <div className="mt-6 flex gap-4">
-        <Select
-          onValueChange={(value) => {
+      <div className="tablet-landscape:flex-row flex flex-col gap-4">
+        <SelectField
+          aria-label={intl.formatMessage(messages.selectAProtocol)}
+          name="Protocol"
+          options={protocols.map((p) => ({ value: p.id, label: p.name }))}
+          onChange={(value) => {
             const protocol = protocols.find(
-              (protocol) => protocol.id === value,
-            );
+              (candidate) => candidate.id === value,
+            ) as Protocol;
 
             setSelectedProtocol(protocol);
           }}
           value={selectedProtocol?.id}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select a Protocol..." />
-          </SelectTrigger>
-          <SelectContent>
-            {protocols?.map((protocol) => (
-              <SelectItem key={protocol.id} value={protocol.id}>
-                {protocol.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          onValueChange={(value) => {
+          placeholder={intl.formatMessage(messages.selectAProtocol)}
+          className="min-w-auto"
+        />
+        <SelectField
+          aria-label={intl.formatMessage(messages.selectAParticipant)}
+          name="Participant"
+          options={participants.map((p) => ({
+            value: p.id,
+            label: p.identifier,
+          }))}
+          onChange={(value) => {
             const participant = participants?.find(
-              (participant) => participant.id === value,
+              (candidate) => candidate.id === value,
             );
 
             setSelectedParticipant(participant);
           }}
           value={selectedParticipant?.id}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select a Participant..." />
-          </SelectTrigger>
-          <SelectContent>
-            {participants?.map((participant) => (
-              <SelectItem key={participant.id} value={participant.id}>
-                {participant.identifier}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder={intl.formatMessage(messages.selectAParticipant)}
+          className="min-w-auto"
+        />
       </div>
-      <div className="mt-6 flex gap-2">
+      <div className="tablet-landscape:flex-row mt-4 flex flex-col gap-2">
         <Button
           disabled={buttonDisabled}
           onClick={() => router.push(getInterviewURL())}
         >
-          Start Interview with GET
+          {intl.formatMessage(messages.startInterviewWithGET)}
         </Button>
         <Button
           disabled={buttonDisabled}
@@ -120,7 +155,7 @@ export default function RecruitmentTestSection({
             })
           }
         >
-          Start Interview with POST
+          {intl.formatMessage(messages.startInterviewWithPOST)}
         </Button>
       </div>
     </>

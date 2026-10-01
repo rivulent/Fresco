@@ -1,18 +1,62 @@
 'use client';
-
 import { ClipboardCopy } from 'lucide-react';
 import Image from 'next/image';
-import ErrorReportNotifier from '~/components/ErrorReportNotifier';
-import Link from '~/components/Link';
-import ResponsiveContainer from '~/components/ResponsiveContainer';
-import { Button } from '~/components/ui/Button';
-import { cardClasses } from '~/components/ui/card';
-import Heading from '~/components/ui/typography/Heading';
-import Paragraph from '~/components/ui/typography/Paragraph';
-import { useToast } from '~/components/ui/use-toast';
-import { cn } from '~/utils/shadcn';
+import { type ReactNode, useEffect, useState } from 'react';
 
-export default function Error({
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { Button } from '@codaco/fresco-ui/Button';
+import Surface from '@codaco/fresco-ui/layout/Surface';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import Link from '~/components/Link';
+import RecoveryI18nProvider from '~/i18n/RecoveryI18nProvider';
+import { captureClientException } from '~/lib/posthog-client';
+
+const messages = defineMessages({
+  copyCopied: {
+    id: 'fresco.globalerror.copyCopied',
+    defaultMessage: 'Copied!',
+    description: 'Researcher-facing globalerror: Copied!',
+  },
+  copyCopyDebugInformation: {
+    id: 'fresco.globalerror.copyCopyDebugInformation',
+    defaultMessage: 'Copy Debug Information',
+    description: 'Researcher-facing globalerror: Copy Debug Information',
+  },
+  errorRobot: {
+    id: 'fresco.globalerror.errorRobot',
+    defaultMessage: 'Error robot',
+    description: 'Researcher-facing globalerror: Error robot',
+  },
+  thereAposSAProblemWithFresco: {
+    id: 'fresco.globalerror.thereAposSAProblemWithFresco',
+    defaultMessage: "There's a problem with Fresco.",
+    description:
+      "Researcher-facing globalerror: There's a problem with Fresco.",
+  },
+  frescoEncounteredASeriousErrorAndIs: {
+    id: 'fresco.globalerror.frescoEncounteredASeriousErrorAndIs',
+    defaultMessage:
+      'Fresco encountered a serious error and is unable to continue.',
+    description:
+      'Researcher-facing globalerror: Fresco encountered a serious error and is unable to continue.',
+  },
+  thisCouldIndicateAProblemWithYour: {
+    id: 'fresco.globalerror.thisCouldIndicateAProblemWithYour',
+    defaultMessage:
+      "This could indicate a problem with your deployment, or it could be a bug in the application. We've been notified and will investigate the issue, but please feel free to reach out via our <tag1> community website </tag1> .",
+    description:
+      "Researcher-facing globalerror: This could indicate a problem with your deployment, or it could be a bug in the application. We've been notified an",
+  },
+});
+
+const renderCommunityLinkChunks = (chunks: ReactNode[]) => (
+  <Link href="https://community.networkcanvas.com">{chunks}</Link>
+);
+
+function ErrorContent({
   error,
   reset,
 }: {
@@ -20,7 +64,9 @@ export default function Error({
   reset: () => void;
   heading?: string;
 }) {
-  const { toast } = useToast();
+  const intl = useAppIntl();
+
+  const [copied, setCopied] = useState(false);
 
   const handleReset = () => {
     reset();
@@ -35,57 +81,59 @@ Stack Trace:
 ${error.stack}`;
 
     await navigator.clipboard.writeText(debugInfo);
-    toast({
-      title: 'Success',
-      description: 'Debug information copied to clipboard',
-      variant: 'success',
-      duration: 3000,
-    });
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
+  useEffect(() => {
+    captureClientException(error);
+  }, [error]);
+
   return (
-    <div className="flex h-[100vh] items-center justify-center">
-      <ErrorReportNotifier error={error} />
-      <ResponsiveContainer
-        baseSize="60%"
-        className={cn(
-          cardClasses,
-          'shadow-platinum-dark m-10 w-[30rem] p-10 shadow-xl',
-        )}
-      >
+    <div className="flex h-screen items-center justify-center">
+      <Surface>
         <div className="mb-6 flex flex-col items-center justify-center gap-2">
           <Image
             src="/images/robot.svg"
             width={80}
             height={80}
-            alt="Error robot"
+            alt={intl.formatMessage(messages.errorRobot)}
           />
-          <Heading variant="h1" className="text-destructive">
-            There&apos;s a problem with Fresco.
+          <Heading level="h1" className="text-destructive">
+            {intl.formatMessage(messages.thereAposSAProblemWithFresco)}
           </Heading>
         </div>
-        <Paragraph variant="lead" className="mb-0">
-          Fresco encountered a serious error and is unable to continue.
+        <Paragraph intent="lead" className="mb-0">
+          {intl.formatMessage(messages.frescoEncounteredASeriousErrorAndIs)}
         </Paragraph>
         <Paragraph>
-          This could indicate a problem with your deployment, or it could be a
-          bug in the application. We&apos;ve been notified and will investigate
-          the issue, but please feel free to reach out via our{' '}
-          <Link href="https://community.networkcanvas.com">
-            community website
-          </Link>
-          .
+          {intl.formatMessage(messages.thisCouldIndicateAProblemWithYour, {
+            tag1: renderCommunityLinkChunks,
+          })}
         </Paragraph>
         <div className="mt-4 flex flex-col gap-2">
-          <Button onClick={copyDebugInfoToClipboard} variant="ghost">
-            Copy Debug Information
+          <Button onClick={copyDebugInfoToClipboard} variant="text">
+            {copied
+              ? intl.formatMessage(messages.copyCopied)
+              : intl.formatMessage(messages.copyCopyDebugInformation)}
             <ClipboardCopy className="ml-2" />
           </Button>
-          <Button onClick={handleReset} variant="default" className="flex">
-            Try Again
+          <Button onClick={handleReset} color="primary" className="flex">
+            {intl.formatMessage(commonMessages.retry)}
           </Button>
         </div>
-      </ResponsiveContainer>
+      </Surface>
     </div>
+  );
+}
+
+export default function GlobalError(props: {
+  error: Error;
+  reset: () => void;
+}) {
+  return (
+    <RecoveryI18nProvider>
+      <ErrorContent {...props} />
+    </RecoveryI18nProvider>
   );
 }

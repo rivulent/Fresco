@@ -2,18 +2,47 @@
 
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
+
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { Button } from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { resetAppSettings } from '~/actions/reset';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '~/components/ui/AlertDialog';
-import { Button } from '~/components/ui/Button';
+
+const messages = defineMessages({
+  copyResetting: {
+    id: 'fresco.ResetButton.copyResetting',
+    defaultMessage: 'Resetting...',
+    description: 'Researcher-facing ResetButton: Resetting...',
+  },
+  copyDeleteAllData: {
+    id: 'fresco.ResetButton.copyDeleteAllData',
+    defaultMessage: 'Delete all data',
+    description: 'Researcher-facing ResetButton: Delete all data',
+  },
+  resetAllAppData: {
+    id: 'fresco.ResetButton.resetAllAppData',
+    defaultMessage: 'Reset all app data',
+    description: 'Researcher-facing ResetButton: Reset all app data',
+  },
+  areYouSure: {
+    id: 'fresco.ResetButton.areYouSure',
+    defaultMessage: 'Are you sure?',
+    description: 'Researcher-facing ResetButton: Are you sure?',
+  },
+  thisActionWillDeleteALLApplicationData: {
+    id: 'fresco.ResetButton.thisActionWillDeleteALLApplicationData',
+    defaultMessage:
+      'This action will delete ALL application data, including interviews and protocols. This action cannot be undone. Do you want to continue?',
+    description:
+      'Researcher-facing ResetButton: This action will delete ALL application data, including interviews and protocols. This action cannot be undone. Do you w',
+  },
+});
 
 const ResetButton = () => {
+  const intl = useAppIntl();
+
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -21,53 +50,45 @@ const ResetButton = () => {
     <>
       <Button
         type="submit"
-        variant="destructive"
+        color="destructive"
         onClick={() => setShowConfirmDialog(true)}
+        className="h-auto min-h-12 py-2 text-center text-wrap"
       >
-        Reset all app data
+        {intl.formatMessage(messages.resetAllAppData)}
       </Button>
-      <AlertDialog
+      <Dialog
+        accent="destructive"
         open={showConfirmDialog}
-        onOpenChange={(state) => setShowConfirmDialog(state)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action will delete ALL application data, including interviews
-              and protocols. This action cannot be undone. Do you want to
-              continue?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <Button
-              onClick={() => setShowConfirmDialog(false)}
-              variant="outline"
-            >
-              Cancel
+        closeDialog={() => setShowConfirmDialog(false)}
+        title={intl.formatMessage(messages.areYouSure)}
+        description={intl.formatMessage(
+          messages.thisActionWillDeleteALLApplicationData,
+        )}
+        footer={
+          <>
+            <Button onClick={() => setShowConfirmDialog(false)}>
+              {intl.formatMessage(commonMessages.cancel)}
             </Button>
             <Button
               disabled={isResetting}
               onClick={async () => {
                 setIsResetting(true);
-                const result = await resetAppSettings();
-                if (result.error) {
+                try {
+                  await resetAppSettings();
+                } catch {
                   setIsResetting(false);
-                  // eslint-disable-next-line no-console
-                  console.log(result.error);
-                  alert(
-                    'Failed to reset app settings. See console for details.',
-                  );
                 }
               }}
-              variant="destructive"
+              color="primary"
             >
-              {isResetting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-              {isResetting ? 'Resetting...' : 'Delete all data'}
+              {isResetting && <Loader2 className="mr-2 size-5 animate-spin" />}
+              {isResetting
+                ? intl.formatMessage(messages.copyResetting)
+                : intl.formatMessage(messages.copyDeleteAllData)}
             </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </>
+        }
+      ></Dialog>
     </>
   );
 };

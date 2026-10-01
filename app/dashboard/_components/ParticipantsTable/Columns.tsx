@@ -1,35 +1,75 @@
-import { type ColumnDef } from '@tanstack/react-table';
-import { DataTableColumnHeader } from '~/components/DataTable/ColumnHeader';
-import { Checkbox } from '~/components/ui/checkbox';
-import { GenerateParticipationURLButton } from './GenerateParticipantURLButton';
-import { type ParticipantWithInterviews } from '~/types/types';
+'use client';
+
 import Image from 'next/image';
-import InfoTooltip from '~/components/InfoTooltip';
-import { InfoIcon } from 'lucide-react';
-import Heading from '~/components/ui/typography/Heading';
-import Paragraph from '~/components/ui/typography/Paragraph';
-import { buttonVariants } from '~/components/ui/Button';
-import { Badge } from '~/components/ui/badge';
-import type { GetProtocolsReturnType } from '~/queries/protocols';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { Badge } from '@codaco/fresco-ui/Badge';
+import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
+import { SelectAllHeader } from '@codaco/fresco-ui/DataTable/SelectAllHeader';
+import { type StrictColumnDef } from '@codaco/fresco-ui/DataTable/types';
+import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
+
+import type { ProtocolWithInterviews } from '../ProtocolsTable/ProtocolsTableClient';
+import { GenerateParticipationURLButton } from './GenerateParticipantURLButton';
+import type { ParticipantRow } from './ParticipantsTableClient';
+
+const messages = defineMessages({
+  interviewCounts: {
+    id: 'fresco.participants.table.interviewCounts',
+    defaultMessage:
+      '{total, number} ({completed, plural, one {# completed} other {# completed}})',
+    description:
+      'Total interviews and completed interviews for one participant.',
+  },
+
+  selectRow: {
+    id: 'fresco.ParticipantsTable.Columns.selectRow',
+    defaultMessage: 'Select row',
+    description: 'Researcher-facing ParticipantsTable / Columns: Select row',
+  },
+  identifier: {
+    id: 'fresco.ParticipantsTable.Columns.identifier',
+    defaultMessage: 'Identifier',
+    description: 'Researcher-facing ParticipantsTable / Columns: Identifier',
+  },
+  protocolIcon: {
+    id: 'fresco.ParticipantsTable.Columns.protocolIcon',
+    defaultMessage: 'Protocol icon',
+    description: 'Researcher-facing ParticipantsTable / Columns: Protocol icon',
+  },
+  label: {
+    id: 'fresco.ParticipantsTable.Columns.label',
+    defaultMessage: 'Label',
+    description: 'Researcher-facing ParticipantsTable / Columns: Label',
+  },
+  interviews: {
+    id: 'fresco.ParticipantsTable.Columns.interviews',
+    defaultMessage: 'Interviews',
+    description: 'Researcher-facing ParticipantsTable / Columns: Interviews',
+  },
+
+  uniqueParticipantURL: {
+    id: 'fresco.ParticipantsTable.Columns.uniqueParticipantURL',
+    defaultMessage: 'Unique Participant URL',
+    description:
+      'Researcher-facing ParticipantsTable / Columns: Unique Participant URL',
+  },
+});
 
 export function getParticipantColumns(
-  protocols: Awaited<GetProtocolsReturnType>,
-): ColumnDef<ParticipantWithInterviews, unknown>[] {
+  intl: IntlShape,
+  protocols: ProtocolWithInterviews[],
+): StrictColumnDef<ParticipantRow>[] {
   return [
     {
       id: 'select',
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
+      header: ({ table }) => <SelectAllHeader table={table} />,
       cell: ({ row }) => (
         <Checkbox
           checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
+          onCheckedChange={(value) => row.toggleSelected(value)}
+          aria-label={intl.formatMessage(messages.selectRow)}
         />
       ),
       enableSorting: false,
@@ -38,8 +78,14 @@ export function getParticipantColumns(
     {
       id: 'identifier',
       accessorKey: 'identifier',
+      sortingFn: 'text',
       header: ({ column }) => {
-        return <DataTableColumnHeader column={column} title="Identifier" />;
+        return (
+          <DataTableColumnHeader
+            column={column}
+            title={intl.formatMessage(messages.identifier)}
+          />
+        );
       },
       cell: ({ row }) => {
         return (
@@ -49,12 +95,12 @@ export function getParticipantColumns(
           >
             <Image
               src="/images/participant.svg"
-              alt="Protocol icon"
+              alt={intl.formatMessage(messages.protocolIcon)}
               className="max-w-none"
               width={24}
               height={24}
             />
-            <Badge variant={'outline'}>
+            <Badge appearance="outline">
               <span className="max-w-56 truncate">
                 {row.original.identifier}
               </span>
@@ -65,8 +111,14 @@ export function getParticipantColumns(
     },
     {
       accessorKey: 'label',
+      sortingFn: 'text',
       header: ({ column }) => {
-        return <DataTableColumnHeader column={column} title="Label" />;
+        return (
+          <DataTableColumnHeader
+            column={column}
+            title={intl.formatMessage(messages.label)}
+          />
+        );
       },
       cell: ({ row }) => {
         return <span className="truncate">{row.original.label}</span>;
@@ -74,8 +126,15 @@ export function getParticipantColumns(
     },
     {
       id: 'interviews',
+      accessorFn: (row) => row._count.interviews,
+      sortingFn: 'basic',
       header: ({ column }) => {
-        return <DataTableColumnHeader column={column} title="Interviews" />;
+        return (
+          <DataTableColumnHeader
+            column={column}
+            title={intl.formatMessage(messages.interviews)}
+          />
+        );
       },
       cell: ({ row }) => {
         const completedInterviews = row.original.interviews.filter(
@@ -83,40 +142,22 @@ export function getParticipantColumns(
         ).length;
         return (
           <span>
-            {row.original._count.interviews ?? ''} ({completedInterviews}{' '}
-            completed)
+            {intl.formatMessage(messages.interviewCounts, {
+              total: row.original._count.interviews,
+              completed: completedInterviews,
+            })}
           </span>
         );
       },
     },
     {
       id: 'participant-url',
-      header: () => {
+      enableSorting: false,
+      header: ({ column }) => {
         return (
-          <InfoTooltip
-            triggerClasses="whitespace-nowrap flex"
-            trigger={
-              <div
-                className={buttonVariants({
-                  variant: 'tableHeader',
-                  size: 'sm',
-                })}
-              >
-                <span>Unique Participant URL</span>
-                <InfoIcon className="mx-2 h-4 w-4" />
-              </div>
-            }
-            content={
-              <>
-                <Heading variant="h4-all-caps">Unique Participant URL</Heading>
-                <Paragraph>
-                  A unique participant URL allows a participant to take an
-                  interview simply by visiting a URL. A participation URL is
-                  specific to each participant, and should only be shared with
-                  them.
-                </Paragraph>
-              </>
-            }
+          <DataTableColumnHeader
+            column={column}
+            title={intl.formatMessage(messages.uniqueParticipantURL)}
           />
         );
       },

@@ -1,17 +1,16 @@
 import { cookies } from 'next/headers';
-import { NextResponse, type NextRequest } from 'next/server';
+import { after, NextResponse, type NextRequest } from 'next/server';
+
 import { createInterview } from '~/actions/interviews';
 import { env } from '~/env';
-import trackEvent from '~/lib/analytics';
+import { captureEvent, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
-
-export const dynamic = 'force-dynamic';
 
 const handler = async (
   req: NextRequest,
-  { params }: { params: { protocolId: string } },
+  { params }: { params: Promise<{ protocolId: string }> },
 ) => {
-  const protocolId = params.protocolId; // From route segment
+  const { protocolId } = await params;
 
   // when deployed via docker `req.url` and `req.nextUrl`
   // shows Docker Container ID instead of real host
@@ -30,7 +29,7 @@ const handler = async (
   // if limitInterviews is enabled
   // Check cookies for interview already completed for this user for this protocol
   // and redirect to finished page
-  if (limitInterviews && cookies().get(protocolId)) {
+  if (limitInterviews && (await cookies()).get(protocolId)) {
     url.pathname = '/interview/finished';
     return NextResponse.redirect(url);
   }
@@ -51,42 +50,59 @@ const handler = async (
   }
 
   // Create a new interview given the protocolId and participantId
-  const { createdInterviewId, error } = await createInterview({
+  const result = await createInterview({
     participantIdentifier,
     protocolId,
   });
 
-  if (error) {
-    void trackEvent({
-      type: 'Error',
-      name: error,
-      message: 'Failed to create interview',
-      metadata: {
+  if (result.errorType) {
+    // The protocol id comes from the URL, so a link to a protocol that has been
+    // deleted (or was never valid) is a routine outcome rather than a fault in
+    // this deployment. Explain it to the participant without reporting an error.
+    if (result.errorType === 'no-protocol') {
+      url.pathname = '/onboard/invalid-link';
+      return NextResponse.redirect(url);
+    }
+
+    after(async () => {
+      await captureEvent('Error', {
+        name: result.error,
+        message: 'Failed to create interview',
         path: '/onboard/[protocolId]/route.ts',
-      },
+      });
+      await flushPostHog();
     });
+
+    if (result.errorType === 'no-anonymous-recruitment') {
+      url.pathname = '/onboard/no-anonymous-recruitment';
+      return NextResponse.redirect(url);
+    }
 
     url.pathname = '/onboard/error';
     return NextResponse.redirect(url);
   }
 
-  // eslint-disable-next-line no-console
-  console.log(
-    `🚀 Created interview with ID ${createdInterviewId} using protocol ${protocolId} for participant ${
-      participantIdentifier ?? 'Anonymous'
-    }...`,
-  );
+  // Note: the interview id is the unauthenticated access capability for the
+  // participant flow, so it must never be written to logs (where it could leak
+  // and let a third party read or tamper with the interview).
 
-  void trackEvent({
-    type: 'InterviewStarted',
-    metadata: {
+  after(async () => {
+    await captureEvent('InterviewStarted', {
       usingAnonymousParticipant: !participantIdentifier,
-    },
+    });
+    await flushPostHog();
   });
 
   // Redirect to the interview
-  url.pathname = `/interview/${createdInterviewId}`;
-  return NextResponse.redirect(url);
+  // Explicitly disable caching to prevent Netlify from caching this redirect
+  // (Netlify adds max-age=86400 by default, causing all users to get the same interview)
+  // See: https://github.com/opennextjs/opennextjs-netlify/issues/3460
+  url.pathname = `/interview/${result.createdInterviewId}`;
+  return NextResponse.redirect(url, {
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    },
+  });
 };
 
 export { handler as GET, handler as POST };

@@ -1,62 +1,86 @@
-import { MoreHorizontal } from 'lucide-react';
-import { Button } from '~/components/ui/Button';
+'use client';
+
+import type { Row } from '@tanstack/react-table';
+import { DeleteIcon, MoreHorizontal, PencilIcon } from 'lucide-react';
+
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { IconButton } from '@codaco/fresco-ui/Button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from '~/components/ui/dropdown-menu';
-import type { Row } from '@tanstack/react-table';
-import { useState } from 'react';
-import ParticipantModal from '~/app/dashboard/participants/_components/ParticipantModal';
-import type { ParticipantWithInterviews } from '~/types/types';
-import type { Participant } from '~/lib/db/generated/client';
+} from '@codaco/fresco-ui/DropdownMenu';
 
-export const ActionsDropdown = ({
+import type { ParticipantRow } from './ParticipantsTableClient';
+
+const messages = defineMessages({
+  openMenu: {
+    id: 'fresco.ParticipantsTable.ActionsDropdown.openMenu',
+    defaultMessage: 'Open menu',
+    description:
+      'Researcher-facing ParticipantsTable / ActionsDropdown: Open menu',
+  },
+  actions: {
+    id: 'fresco.ParticipantsTable.ActionsDropdown.actions',
+    defaultMessage: 'Actions',
+    description:
+      'Researcher-facing ParticipantsTable / ActionsDropdown: Actions',
+  },
+  edit: {
+    id: 'fresco.ParticipantsTable.ActionsDropdown.edit',
+    defaultMessage: 'Edit',
+    description: 'Researcher-facing ParticipantsTable / ActionsDropdown: Edit',
+  },
+});
+
+export function ActionsDropdown({
   row,
-  data,
-  deleteHandler,
+  onEdit,
+  onDelete,
 }: {
-  row: Row<ParticipantWithInterviews>;
-  data: ParticipantWithInterviews[];
-  deleteHandler: (participant: ParticipantWithInterviews) => void;
-}) => {
-  const [selectedParticipant, setSelectedParticipant] =
-    useState<Participant | null>(null);
-  const [showParticipantModal, setShowParticipantModal] = useState(false);
-
-  const editParticipant = (data: Participant) => {
-    setSelectedParticipant(data);
-    setShowParticipantModal(true);
-  };
+  row: Row<ParticipantRow>;
+  onEdit: (participant: ParticipantRow) => void;
+  onDelete: (participant: ParticipantRow) => void;
+}) {
+  const intl = useAppIntl();
 
   return (
-    <>
-      <ParticipantModal
-        open={showParticipantModal}
-        setOpen={setShowParticipantModal}
-        existingParticipants={data}
-        editingParticipant={selectedParticipant}
-        setEditingParticipant={setSelectedParticipant}
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <IconButton
+            variant="text"
+            aria-label={intl.formatMessage(messages.openMenu)}
+            icon={<MoreHorizontal />}
+            size="sm"
+          />
+        }
+        nativeButton
       />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => editParticipant(row.original)}>
-            Edit
+      <DropdownMenuContent align="end">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>
+            {intl.formatMessage(messages.actions)}
+          </DropdownMenuLabel>
+          <DropdownMenuItem
+            onClick={() => onEdit(row.original)}
+            icon={<PencilIcon />}
+          >
+            {intl.formatMessage(messages.edit)}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => deleteHandler(row.original)}>
-            Delete
+          <DropdownMenuItem
+            onClick={() => onDelete(row.original)}
+            icon={<DeleteIcon />}
+          >
+            {intl.formatMessage(commonMessages.delete)}
           </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
-};
+}

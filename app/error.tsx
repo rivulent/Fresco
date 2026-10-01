@@ -1,15 +1,50 @@
 'use client';
 
 import { ClipboardCopy } from 'lucide-react';
-import Image from 'next/image';
-import ErrorReportNotifier from '~/components/ErrorReportNotifier';
-import ResponsiveContainer from '~/components/ResponsiveContainer';
-import { Button } from '~/components/ui/Button';
-import { cardClasses } from '~/components/ui/card';
-import Heading from '~/components/ui/typography/Heading';
-import Paragraph from '~/components/ui/typography/Paragraph';
-import { useToast } from '~/components/ui/use-toast';
-import { cn } from '~/utils/shadcn';
+import { useEffect } from 'react';
+
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { Button } from '@codaco/fresco-ui/Button';
+import Surface from '@codaco/fresco-ui/layout/Surface';
+import { useToast } from '@codaco/fresco-ui/Toast';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { captureClientException } from '~/lib/posthog-client';
+
+const messages = defineMessages({
+  success: {
+    id: 'fresco.error.success',
+    defaultMessage: 'Success',
+    description: 'Researcher-facing error: Success',
+  },
+  debugInformationCopiedToClipboard: {
+    id: 'fresco.error.debugInformationCopiedToClipboard',
+    defaultMessage: 'Debug information copied to clipboard',
+    description:
+      'Researcher-facing error: Debug information copied to clipboard',
+  },
+  frescoEncounteredAnErrorWhileTryingTo: {
+    id: 'fresco.error.frescoEncounteredAnErrorWhileTryingTo',
+    defaultMessage:
+      'Fresco encountered an error while trying to load the page, and could not continue.',
+    description:
+      'Researcher-facing error: Fresco encountered an error while trying to load the page, and could not continue.',
+  },
+  thisErrorHasBeenAutomaticallyReportedTo: {
+    id: 'fresco.error.thisErrorHasBeenAutomaticallyReportedTo',
+    defaultMessage:
+      'This error has been automatically reported to us, but if you would like to provide further information that you think might be useful please contact us. You can also use the retry button to attempt to load the page again.',
+    description:
+      'Researcher-facing error: This error has been automatically reported to us, but if you would like to provide further information that you think mi',
+  },
+  copyDebugInformation: {
+    id: 'fresco.error.copyDebugInformation',
+    defaultMessage: 'Copy Debug Information',
+    description: 'Researcher-facing error: Copy Debug Information',
+  },
+});
 
 export default function Error({
   error,
@@ -19,7 +54,9 @@ export default function Error({
   reset: () => void;
   heading?: string;
 }) {
-  const { toast } = useToast();
+  const intl = useAppIntl();
+
+  const { add } = useToast();
 
   const handleReset = () => {
     reset();
@@ -34,55 +71,41 @@ Stack Trace:
 ${error.stack}`;
 
     await navigator.clipboard.writeText(debugInfo);
-    toast({
-      title: 'Success',
-      description: 'Debug information copied to clipboard',
+    add({
+      title: <AppMessage message={messages.success} />,
+      description: (
+        <AppMessage message={messages.debugInformationCopiedToClipboard} />
+      ),
       variant: 'success',
-      duration: 3000,
     });
   };
 
+  useEffect(() => {
+    captureClientException(error);
+  }, [error]);
+
   return (
-    <div className="flex h-[100vh] items-center justify-center">
-      <ErrorReportNotifier error={error} />
-      <ResponsiveContainer
-        baseSize="60%"
-        className={cn(
-          cardClasses,
-          'shadow-platinum-dark m-10 w-[30rem] p-10 shadow-xl',
-        )}
-      >
-        <div className="mb-6 flex flex-col items-center justify-center gap-2">
-          <Image
-            src="/images/robot.svg"
-            width={80}
-            height={80}
-            alt="Error robot"
-          />
-          <Heading variant="h1" className="text-destructive">
-            Something went wrong.
-          </Heading>
-        </div>
-        <Paragraph variant="lead" className="mb-0">
-          Fresco encountered an error while trying to load the page, and could
-          not continue.
+    <div className="flex h-screen items-center justify-center">
+      <Surface baseSize="60%" maxWidth="3xl">
+        <Heading level="h1" className="text-destructive">
+          {intl.formatMessage(commonMessages.genericError)}
+        </Heading>
+        <Paragraph intent="lead">
+          {intl.formatMessage(messages.frescoEncounteredAnErrorWhileTryingTo)}
         </Paragraph>
         <Paragraph>
-          This error has been automatically reported to us, but if you would
-          like to provide further information that you think might be useful
-          please use the feedback button. You can also use the rety button to
-          attempt to load the page again.
+          {intl.formatMessage(messages.thisErrorHasBeenAutomaticallyReportedTo)}
         </Paragraph>
-        <div className="mt-4 flex flex-col gap-2">
-          <Button onClick={copyDebugInfoToClipboard} variant="ghost">
-            Copy Debug Information
-            <ClipboardCopy className="ml-2" />
+        <hr className="tablet-landscape:block hidden" />
+        <div className="tablet-landscape:flex-row tablet-landscape:justify-between flex flex-col gap-2">
+          <Button onClick={copyDebugInfoToClipboard} icon={<ClipboardCopy />}>
+            {intl.formatMessage(messages.copyDebugInformation)}
           </Button>
-          <Button onClick={handleReset} variant="default" className="flex">
-            Try Again
+          <Button onClick={handleReset} color="primary" className="flex">
+            {intl.formatMessage(commonMessages.retry)}
           </Button>
         </div>
-      </ResponsiveContainer>
+      </Surface>
     </div>
   );
 }
