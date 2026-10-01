@@ -10,6 +10,12 @@ const activityDetailMessages = defineMessages({
     description:
       'A successful researcher sign-in. User-controlled values are literal data, not translated copy.',
   },
+  ssoLogin: {
+    id: 'fresco.activity.detail.ssoLogin',
+    defaultMessage: 'User {username} logged in via SSO.',
+    description:
+      'A successful SSO sign-in via Rivulent. User-controlled values are literal data, not translated copy.',
+  },
   recoveryLogin: {
     id: 'fresco.activity.detail.recoveryLogin',
     defaultMessage: 'User {username} logged in with a recovery code.',
@@ -201,6 +207,7 @@ const activityDetailMessages = defineMessages({
 
 const activityValueSchemas = {
   userLogin: z.strictObject({ username: z.string() }),
+  ssoLogin: z.strictObject({ username: z.string() }),
   recoveryLogin: z.strictObject({ username: z.string() }),
   userCreated: z.strictObject({ username: z.string(), target: z.string() }),
   usersDeleted: z.strictObject({

@@ -107,14 +107,22 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      void addEvent('User Created', `SSO user ${finalUsername} created via Rivulent`);
+      void addEvent(
+        'User Created',
+        `SSO user ${finalUsername} created via Rivulent`,
+        { kind: 'userCreated', values: { username: finalUsername, target: finalUsername } },
+      );
     }
 
     // 5. Create session (SSO users bypass 2FA - Rivulent is trusted)
     await createSessionCookie(user.id);
 
     // 6. Log the SSO login
-    void addEvent('SSO Login', `User ${user.username} logged in via SSO`);
+    void addEvent(
+      'SSO Login',
+      `User ${user.username} logged in via SSO`,
+      { kind: 'ssoLogin', values: { username: user.username } },
+    );
 
     // 7. Redirect to requested page or dashboard
     return NextResponse.redirect(new URL(redirectTo, request.url));
