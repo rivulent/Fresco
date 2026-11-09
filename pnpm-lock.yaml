@@ -543,7 +543,7 @@ packages:
         optional: true
 
   '@codaco/interview@file:vendor/codaco-interview-9.1.0.tgz':
-    resolution: {integrity: sha512-K+6uU1OIjUCaftvtTc8YZhUvpdibs3GYa28RzdgY7jewBLpSSGpgSnP6v0vRX4zCfaiU8Eeg014+NtH4EYLdYg==, tarball: file:vendor/codaco-interview-9.1.0.tgz}
+    resolution: {integrity: sha512-0D2trj8QnBw71+sOzxbtj2uqN1SJK0uxILhBjZ+GenBhBcPn8x3Urmk578Gn8JmkJgD5hmCG7JfR3tpjegYxCA==, tarball: file:vendor/codaco-interview-9.1.0.tgz}
     version: 9.1.0
     peerDependencies:
       '@codaco/fresco-ui': ^7.0.0
