@@ -5,6 +5,7 @@ import {
 } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
+import type { PipedData } from '~/schemas/interviews';
 
 export function mapInterviewPayload(
   source: NonNullable<GetInterviewByIdQuery>,
@@ -14,7 +15,7 @@ export function mapInterviewPayload(
   initialStep: number;
   initialSyncRevision: number;
 } {
-  const { protocol, ...session } = source;
+  const { protocol, pipedData, ...session } = source;
 
   // The stored version is written from the validated document at import
   // (actions/protocols.ts) and rewritten by the deploy-time migration
@@ -49,6 +50,12 @@ export function mapInterviewPayload(
     if (a.url) assetUrls[a.assetId] = a.url;
   }
 
+  // Piped-text values live in their own column (see schema.prisma) so the sync
+  // endpoint cannot drop them; the interview engine reads them from the network.
+  const network: InterviewPayload['session']['network'] & {
+    pipedData?: PipedData;
+  } = pipedData ? { ...session.network, pipedData } : session.network;
+
   const payload: InterviewPayload = {
     session: {
       id: session.id,
@@ -56,7 +63,7 @@ export function mapInterviewPayload(
       finishTime: session.finishTime?.toISOString() ?? null,
       exportTime: session.exportTime?.toISOString() ?? null,
       lastUpdated: session.lastUpdated.toISOString(),
-      network: session.network,
+      network,
       stageMetadata: session.stageMetadata ?? undefined,
     },
     protocol: {

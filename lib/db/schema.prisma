@@ -111,6 +111,12 @@ model Interview {
   // overtakes a newer one is discarded instead of rolling the interview back.
   // Not a timestamp: see the sync route for why the client clock will not do.
   syncRevision  Int         @default(0)
+  // Rivulent: piped-text values ({{key}} substitution) written by the Network
+  // when it creates the interview. Kept out of `network` because the sync
+  // endpoint replaces that column wholesale and only keeps nodes/edges/ego.
+  // Nothing in Fresco writes this column; it is injected into the session's
+  // network when the interview loads (see mapInterviewPayload).
+  pipedData     Json?
 
   @@index(fields: [protocolId])
   @@index([participantId])

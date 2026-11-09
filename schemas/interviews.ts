@@ -1,14 +1,21 @@
+import { z } from 'zod';
+
 import { type Participant, type Protocol } from '~/lib/db/generated/client';
 
 /**
- * Piped-in data for text substitution in prompts/information screens.
- * Stored in interview.network.pipedData.
+ * Piped-in data for {{key}} text substitution in prompts, form labels and
+ * information screens (implemented in the vendored @codaco/interview fork).
  *
- * NOTE: Text substitution using {{key}} syntax requires support in the
- * @codaco/interview package. Currently this data structure is passed through
- * but substitution is not yet implemented in the upstream package.
+ * Written by the Network into the `Interview.pipedData` column when it creates
+ * an interview, and injected into `session.network.pipedData` when the
+ * interview loads — the only place the interview engine reads it from.
  */
-export type PipedData = Record<string, string | number | boolean | null>;
+export const PipedDataSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.number(), z.boolean(), z.null()]),
+);
+
+export type PipedData = z.infer<typeof PipedDataSchema>;
 
 export type DeleteInterviews = {
   id: string;

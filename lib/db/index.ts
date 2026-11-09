@@ -11,6 +11,7 @@ import { NcNetworkSchema, StageMetadataSchema } from '@codaco/shared-consts';
 import { env } from '~/env';
 import { PrismaClient } from '~/lib/db/generated/client';
 import { safeParseField } from '~/lib/db/safeParseField';
+import { PipedDataSchema } from '~/schemas/interviews';
 
 const createPrismaClient = () => {
   const adapter = env.USE_NEON_POSTGRES_ADAPTER
@@ -91,6 +92,22 @@ const createPrismaClient = () => {
               StageMetadataSchema,
               stageMetadata,
               'interview.stageMetadata',
+              null,
+            );
+          },
+        },
+        pipedData: {
+          needs: {
+            pipedData: true,
+          },
+          compute: ({ pipedData }) => {
+            if (!pipedData) {
+              return null;
+            }
+            return safeParseField(
+              PipedDataSchema,
+              pipedData,
+              'interview.pipedData',
               null,
             );
           },

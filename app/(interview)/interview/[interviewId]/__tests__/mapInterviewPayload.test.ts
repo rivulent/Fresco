@@ -28,6 +28,7 @@ function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
     stageMetadata: null,
     isSynthetic: false,
     syncRevision: 7,
+    pipedData: null,
     protocol: {
       id: 'protocol-1',
       hash: 'abc123',
@@ -66,6 +67,27 @@ describe('mapInterviewPayload', () => {
     );
 
     expect(initialSyncRevision).toBe(7);
+  });
+
+  it('injects the pipedData column into the session network for {{key}} substitution', () => {
+    const { payload } = mapInterviewPayload({
+      ...makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
+      pipedData: { participantFirstName: 'Ada', visitNumber: 2 },
+    });
+
+    expect(payload.session.network).toMatchObject({
+      nodes: [],
+      edges: [],
+      pipedData: { participantFirstName: 'Ada', visitNumber: 2 },
+    });
+  });
+
+  it('leaves the network without pipedData when the column is empty', () => {
+    const { payload } = mapInterviewPayload(
+      makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
+    );
+
+    expect(payload.session.network).not.toHaveProperty('pipedData');
   });
 
   it('refuses a protocol row stored below the compatible version rather than mislabelling it', () => {
