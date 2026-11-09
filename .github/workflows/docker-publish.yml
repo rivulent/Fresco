@@ -54,11 +54,11 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/complexdatacollective/fresco:${{ steps.version.outputs.version }}
-            ghcr.io/complexdatacollective/fresco:latest
+            ghcr.io/${{ github.repository_owner }}/fresco:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/fresco:latest
           cache-from: |
             type=gha
-            type=registry,ref=ghcr.io/complexdatacollective/fresco:buildcache
+            type=registry,ref=ghcr.io/${{ github.repository_owner }}/fresco:buildcache
           cache-to: |
             type=gha,mode=max
-            type=registry,ref=ghcr.io/complexdatacollective/fresco:buildcache,mode=max,image-manifest=true
+            type=registry,ref=ghcr.io/${{ github.repository_owner }}/fresco:buildcache,mode=max,image-manifest=true
