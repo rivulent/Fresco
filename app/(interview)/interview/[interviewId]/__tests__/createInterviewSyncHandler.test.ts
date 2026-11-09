@@ -360,6 +360,54 @@ describe('createInterviewSyncHandler', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('reports a closed interview window to the host instead of retrying', async () => {
+    const expired = vi.fn(() => ({
+      success: true,
+      applied: false,
+      frozen: true,
+      expired: true,
+      syncRevision: 4,
+    }));
+    const { fetchMock } = makeAutoFetch(expired);
+    vi.stubGlobal('fetch', fetchMock);
+    const onExpired = vi.fn();
+
+    const onSync = createInterviewSyncHandler({
+      interviewId: 'interview-1',
+      initialSyncRevision: 4,
+      getCurrentStep: () => 0,
+      onExpired,
+    });
+
+    await onSync('interview-1', sessionWith('too-late'), ORDINARY);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(onExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not report a frozen, finished interview as expired', async () => {
+    const frozen = vi.fn(() => ({
+      success: true,
+      applied: false,
+      frozen: true,
+      syncRevision: 4,
+    }));
+    const { fetchMock } = makeAutoFetch(frozen);
+    vi.stubGlobal('fetch', fetchMock);
+    const onExpired = vi.fn();
+
+    const onSync = createInterviewSyncHandler({
+      interviewId: 'interview-1',
+      initialSyncRevision: 4,
+      getCurrentStep: () => 0,
+      onExpired,
+    });
+
+    await onSync('interview-1', sessionWith('after-finish'), ORDINARY);
+
+    expect(onExpired).not.toHaveBeenCalled();
+  });
+
   it('batches ordinary changes and writes the newest of them', async () => {
     const { apply } = makeServer();
     const { fetchMock, bodies } = makeAutoFetch(apply);

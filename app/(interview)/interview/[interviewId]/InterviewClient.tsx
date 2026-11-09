@@ -14,6 +14,7 @@ import {
   type StepChangeHandler,
 } from '@codaco/interview';
 import InterviewCompleted from '~/app/(interview)/interview/_components/InterviewCompleted';
+import InterviewExpired from '~/app/(interview)/interview/_components/InterviewExpired';
 import { env } from '~/env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
 import { useFrescoLocale } from '~/i18n/FrescoI18nProvider';
@@ -63,6 +64,15 @@ export default function InterviewClient({
     [setCurrentStep],
   );
 
+  const [finished, setFinished] = useState(false);
+  const [expired, setExpired] = useState(false);
+
+  // Rivulent: the interview window closed while the participant was in it.
+  const handleExpired = useCallback(() => {
+    setExpired(true);
+    router.replace('/interview/expired');
+  }, [router]);
+
   const onSync = useMemo(
     () =>
       createInterviewSyncHandler({
@@ -72,11 +82,10 @@ export default function InterviewClient({
         // the step a write should record is the one in force when it goes on
         // the wire.
         getCurrentStep: () => currentStepRef.current,
+        onExpired: handleExpired,
       }),
-    [payload.session.id, initialSyncRevision],
+    [payload.session.id, initialSyncRevision, handleExpired],
   );
-
-  const [finished, setFinished] = useState(false);
 
   const onFinish = useCallback<FinishHandler>(
     async (id, signal) => {
@@ -86,6 +95,11 @@ export default function InterviewClient({
         keepalive: true,
       });
 
+      if (response.status === 410) {
+        handleExpired();
+        return;
+      }
+
       if (!response.ok) {
         throw new Error('Your interview could not be submitted.');
       }
@@ -94,7 +108,7 @@ export default function InterviewClient({
 
       router.replace('/interview/finished');
     },
-    [router],
+    [router, handleExpired],
   );
 
   const onRequestAsset = useCallback<AssetRequestHandler>((assetId) => {
@@ -121,6 +135,10 @@ export default function InterviewClient({
 
   if (finished) {
     return <InterviewCompleted />;
+  }
+
+  if (expired) {
+    return <InterviewExpired />;
   }
 
   return (

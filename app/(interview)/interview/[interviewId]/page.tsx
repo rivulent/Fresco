@@ -16,6 +16,7 @@ import {
   getInterviewById,
   type GetInterviewByIdQuery,
 } from '~/queries/interviews';
+import { isInterviewExpired } from '~/utils/isInterviewExpired';
 
 import InterviewClient from './InterviewClient';
 import { mapInterviewPayload } from './mapInterviewPayload';
@@ -76,6 +77,13 @@ async function InterviewContent({
 
   if (!session && interview?.finishTime) {
     redirect('/interview/finished');
+  }
+
+  // Rivulent: the Network closes the interview window. Researchers can still
+  // open it from the dashboard, but the sync endpoint refuses its writes, so
+  // the first change they make sends them to the closed page as well.
+  if (!session && isInterviewExpired(interview.expiresAt)) {
+    redirect('/interview/expired');
   }
 
   after(async () => {

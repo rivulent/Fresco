@@ -29,6 +29,7 @@ function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
     isSynthetic: false,
     syncRevision: 7,
     pipedData: null,
+    expiresAt: null,
     protocol: {
       id: 'protocol-1',
       hash: 'abc123',

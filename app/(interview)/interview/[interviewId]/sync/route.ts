@@ -9,6 +9,7 @@ import {
 import { prisma } from '~/lib/db';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
+import { isInterviewExpired } from '~/utils/isInterviewExpired';
 
 /**
  * How far one accepted write may move the revision on. The client sends the
@@ -99,25 +100,36 @@ const routeHandler = async (
 
   const freezeEnabled = await getAppSetting('freezeInterviewsAfterCompletion');
 
-  if (freezeEnabled) {
-    const interview = await prisma.interview.findUnique({
-      where: { id: interviewId },
-      select: { finishTime: true, syncRevision: true },
-    });
+  const interview = await prisma.interview.findUnique({
+    where: { id: interviewId },
+    select: { finishTime: true, expiresAt: true, syncRevision: true },
+  });
 
-    if (interview?.finishTime) {
-      // Flagged, not just reported as unapplied: freezing declines every write
-      // permanently, so this is nothing like losing a race to a newer one. A
-      // client that read it as one would rewrite, be declined again, and report
-      // a failure on every change — for an interview that is over and already
-      // holds its final state.
-      return NextResponse.json({
-        success: true,
-        applied: false,
-        frozen: true,
-        syncRevision: interview.syncRevision,
-      });
-    }
+  // Rivulent: a closed interview window declines every write, the same way
+  // freezing does, and says why so the client can show the closed page rather
+  // than let the participant keep answering into nothing.
+  if (interview && isInterviewExpired(interview.expiresAt)) {
+    return NextResponse.json({
+      success: true,
+      applied: false,
+      frozen: true,
+      expired: true,
+      syncRevision: interview.syncRevision,
+    });
+  }
+
+  if (freezeEnabled && interview?.finishTime) {
+    // Flagged, not just reported as unapplied: freezing declines every write
+    // permanently, so this is nothing like losing a race to a newer one. A
+    // client that read it as one would rewrite, be declined again, and report
+    // a failure on every change — for an interview that is over and already
+    // holds its final state.
+    return NextResponse.json({
+      success: true,
+      applied: false,
+      frozen: true,
+      syncRevision: interview.syncRevision,
+    });
   }
 
   try {

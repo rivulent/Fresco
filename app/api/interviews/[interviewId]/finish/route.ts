@@ -6,6 +6,7 @@ import { addEvent } from '~/lib/activityFeed';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
+import { isInterviewExpired } from '~/utils/isInterviewExpired';
 
 export async function POST(
   _request: Request,
@@ -14,6 +15,21 @@ export async function POST(
   const { interviewId } = await params;
 
   try {
+    // Rivulent: an interview whose window has closed cannot be completed. Its
+    // late answers were never saved, so marking it finished would record a
+    // completion the Network should not count.
+    const existing = await prisma.interview.findUnique({
+      where: { id: interviewId },
+      select: { expiresAt: true },
+    });
+
+    if (existing && isInterviewExpired(existing.expiresAt)) {
+      return NextResponse.json(
+        { error: 'Interview expired', expired: true },
+        { status: 410 },
+      );
+    }
+
     const updatedInterview = await prisma.interview.update({
       where: { id: interviewId },
       data: { finishTime: new Date() },

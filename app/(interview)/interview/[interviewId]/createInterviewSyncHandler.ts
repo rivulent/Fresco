@@ -25,6 +25,11 @@ type Args = {
   initialSyncRevision: number;
   /** Reads the host's current step at the moment a write is put on the wire. */
   getCurrentStep: () => number;
+  /**
+   * Rivulent: called when the server reports the interview window has closed,
+   * so the host can replace the interview with the closed page.
+   */
+  onExpired?: () => void;
 };
 
 /** What the sync route reports back about the write it was handed. */
@@ -35,6 +40,8 @@ type SyncOutcome = {
   stored: number | undefined;
   /** The interview is finished and frozen, so no write will ever be taken. */
   frozen: boolean;
+  /** Rivulent: the interview window has closed; a kind of frozen. */
+  expired: boolean;
 };
 
 async function readOutcome(response: Response): Promise<SyncOutcome> {
@@ -45,7 +52,7 @@ async function readOutcome(response: Response): Promise<SyncOutcome> {
   try {
     const result: unknown = await response.json();
     if (typeof result !== 'object' || result === null) {
-      return { applied: undefined, stored: undefined, frozen: false };
+      return { applied: undefined, stored: undefined, frozen: false, expired: false };
     }
     const applied = 'applied' in result ? result.applied : undefined;
     const stored = 'syncRevision' in result ? result.syncRevision : undefined;
@@ -53,9 +60,10 @@ async function readOutcome(response: Response): Promise<SyncOutcome> {
       applied: typeof applied === 'boolean' ? applied : undefined,
       stored: typeof stored === 'number' ? stored : undefined,
       frozen: 'frozen' in result && result.frozen === true,
+      expired: 'expired' in result && result.expired === true,
     };
   } catch {
-    return { applied: undefined, stored: undefined, frozen: false };
+    return { applied: undefined, stored: undefined, frozen: false, expired: false };
   }
 }
 
@@ -77,6 +85,7 @@ export function createInterviewSyncHandler({
   interviewId,
   initialSyncRevision,
   getCurrentStep,
+  onExpired,
 }: Args): SyncHandler {
   let inFlight: AbortController | null = null;
   // Numbers the writes this browser issues, so the server can tell which of two
@@ -161,7 +170,10 @@ export function createInterviewSyncHandler({
       // The interview is finished and frozen, so no write will ever be taken.
       // Rewriting would be declined again and report a failure the engine logs
       // on every change afterwards.
-      if (first.frozen) return;
+      if (first.frozen) {
+        if (first.expired) onExpired?.();
+        return;
+      }
 
       // The row kept what it had. Returning here would be a claim the engine
       // acts on: it marks the snapshot durable and stops offering it, so if the

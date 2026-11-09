@@ -117,6 +117,11 @@ model Interview {
   // Nothing in Fresco writes this column; it is injected into the session's
   // network when the interview loads (see mapInterviewPayload).
   pipedData     Json?
+  // Rivulent: when the interview window closes, written by the Network when it
+  // creates the interview (already including any grace period). Past it, the
+  // participant is shown a closed page and the sync and finish endpoints refuse
+  // writes. Null means the interview never expires.
+  expiresAt     DateTime?
 
   @@index(fields: [protocolId])
   @@index([participantId])

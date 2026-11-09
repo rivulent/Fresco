@@ -343,5 +343,53 @@ describe('interview sync route', () => {
       });
       expect(updateManyMock).not.toHaveBeenCalled();
     });
+
+    it('refuses writes once the interview window has closed, whether or not freezing is on', async () => {
+      getAppSettingMock.mockResolvedValue(false);
+      findUniqueMock.mockResolvedValue({
+        finishTime: null,
+        expiresAt: new Date(Date.now() - 60_000),
+        syncRevision: 5,
+      });
+
+      const response = await post(
+        makeRequest(networkNamed('too-late'), { syncRevision: 6 }),
+      );
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({
+        success: true,
+        applied: false,
+        frozen: true,
+        expired: true,
+        syncRevision: 5,
+      });
+      expect(updateManyMock).not.toHaveBeenCalled();
+    });
+
+    it('accepts writes while the interview window is still open', async () => {
+      const readRow = installInterviewRow({
+        syncRevision: 0,
+        network: networkNamed('initial'),
+      });
+      findUniqueMock.mockImplementation(() =>
+        Promise.resolve({
+          ...readRow(),
+          finishTime: null,
+          expiresAt: new Date(Date.now() + 60_000),
+        }),
+      );
+
+      const response = await post(
+        makeRequest(networkNamed('in-time'), { syncRevision: 1 }),
+      );
+
+      await expect(response.json()).resolves.toEqual({
+        success: true,
+        applied: true,
+        syncRevision: 1,
+      });
+      expect(readRow()?.network).toEqual(networkNamed('in-time'));
+    });
   });
 });
