@@ -1,4 +1,6 @@
-FROM node:lts-alpine AS base
+# Pinned to Node 24: `lts` now resolves to Node 26, and Node 25+ no longer
+# bundles corepack, which the stages below rely on to provide pnpm.
+FROM node:24-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
