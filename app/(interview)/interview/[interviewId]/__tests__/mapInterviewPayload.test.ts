@@ -91,6 +91,27 @@ describe('mapInterviewPayload', () => {
     expect(payload.session.network).not.toHaveProperty('pipedData');
   });
 
+  it('exposes a piped value as the matching ego variable so skip logic can read it', () => {
+    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+    const { payload } = mapInterviewPayload({
+      ...source,
+      pipedData: { B1_AUDIT: '8', participantFirstName: 'Ada' },
+      protocol: {
+        ...source.protocol,
+        codebook: {
+          node: {},
+          edge: {},
+          ego: { variables: { 'var-audit': { name: 'B1_AUDIT', type: 'number' } } },
+        },
+      },
+    });
+
+    expect(payload.session.network.ego.attributes).toEqual({ 'var-audit': 8 });
+    expect(payload.session.network).toMatchObject({
+      pipedData: { B1_AUDIT: '8', participantFirstName: 'Ada' },
+    });
+  });
+
   it('refuses a protocol row stored below the compatible version rather than mislabelling it', () => {
     const staleVersion = COMPATIBLE_PROTOCOL_SCHEMA_VERSION - 1;
 

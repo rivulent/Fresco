@@ -7,6 +7,8 @@ import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-s
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
 import type { PipedData } from '~/schemas/interviews';
 
+import { applyPipedEgoAttributes } from '~/app/(interview)/interview/[interviewId]/applyPipedEgoAttributes';
+
 export function mapInterviewPayload(
   source: NonNullable<GetInterviewByIdQuery>,
 ): {
@@ -50,11 +52,21 @@ export function mapInterviewPayload(
     if (a.url) assetUrls[a.assetId] = a.url;
   }
 
+  // Piped values that match a codebook ego variable by name become ego
+  // attributes, so stage skip logic can depend on them.
+  const networkWithPipedEgo = applyPipedEgoAttributes(
+    session.network,
+    pipedData,
+    protocol.codebook,
+  );
+
   // Piped-text values live in their own column (see schema.prisma) so the sync
   // endpoint cannot drop them; the interview engine reads them from the network.
   const network: InterviewPayload['session']['network'] & {
     pipedData?: PipedData;
-  } = pipedData ? { ...session.network, pipedData } : session.network;
+  } = pipedData
+    ? { ...networkWithPipedEgo, pipedData }
+    : networkWithPipedEgo;
 
   const payload: InterviewPayload = {
     session: {
